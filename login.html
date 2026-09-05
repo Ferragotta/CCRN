@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCCRN ComplianceIQ — Corporate Sign In</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eaf4fb;
+      --surface: #ffffff;
+      --surface2: #f0f7fd;
+      --border: #c8dff0;
+      --border-subtle: #dbeafe;
+      --accent: #0077b6;
+      --accent-hover: #0096c7;
+      --accent-light: rgba(0, 119, 182, 0.08);
+      --accent2: #7c3aed;
+      --success: #059669;
+      --success-light: #d1fae5;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --text: #0f2b44;
+      --text-muted: #5a7a95;
+      --text-dim: #2c5282;
+      --shadow-sm: 0 2px 8px rgba(0, 100, 180, 0.06);
+      --shadow-lg: 0 16px 40px rgba(0, 80, 160, 0.12);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at 10% 10%, #e0f2fe 0%, #edf6fd 85%);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .login-container {
+      width: 960px;
+      max-width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      display: grid;
+      grid-template-columns: 1.1fr 1.3fr;
+      overflow: hidden;
+    }
+
+    /* LEFT BRAND PANEL */
+    .brand-side {
+      background: linear-gradient(135deg, #0077b6 0%, #0096c7 100%);
+      color: #ffffff;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-badge {
+      background: #ffffff;
+      color: var(--accent);
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      opacity: 0.85;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .role-directory {
+      margin: 28px 0;
+    }
+
+    .role-dir-heading {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-dir-desc {
+      font-size: 11px;
+      opacity: 0.88;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .role-cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .role-card-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      transition: all 0.2s ease;
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .role-card-btn:hover, .role-card-btn.active {
+      background: #ffffff;
+      color: var(--accent);
+      border-color: #ffffff;
+      transform: translateX(4px);
+    }
+
+    .brand-footer {
+      font-size: 11px;
+      opacity: 0.75;
+      line-height: 1.5;
+    }
+
+    /* RIGHT AUTH FORM PANEL */
+    .form-side {
+      padding: 44px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      background: #ffffff;
+    }
+
+    .form-header {
+      margin-bottom: 24px;
+    }
+
+    .form-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .form-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .alert-banner {
+      display: none;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      margin-bottom: 16px;
+      background: var(--danger-light);
+      color: var(--danger);
+      border: 1px solid #fca5a5;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 10px 40px 10px 38px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    .input-wrap input:focus {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.1);
+    }
+
+    .input-wrap .field-icon {
+      position: absolute;
+      left: 12px;
+      top: 13px;
+      color: var(--text-muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .toggle-pass-btn {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .toggle-pass-btn:hover { color: var(--accent); }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 22px;
+      font-size: 12px;
+    }
+
+    .remember-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-weight: 500;
+      user-select: none;
+    }
+
+    .forgot-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .forgot-link:hover { text-decoration: underline; }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--accent);
+      color: #ffffff;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 12px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-submit:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 119, 182, 0.2);
+    }
+
+    .form-footer {
+      margin-top: 26px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .login-container { grid-template-columns: 1fr; }
+      .brand-side { display: none; }
+      .form-side { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-container">
+  
+  <!-- LEFT: Corporate Directory & System Context -->
+  <div class="brand-side">
+    <div>
+      <div class="brand-logo">
+        <div class="brand-title">CCCRN ComplianceIQ</div>
+        <div class="brand-badge">Enterprise</div>
+      </div>
+      <div class="brand-sub">Compliance Management System</div>
+    </div>
+
+    <div class="role-directory">
+      <div class="role-dir-heading">
+        <i class="fa-solid fa-address-book"></i> Corporate Roster Directory:
+      </div>
+      <div class="role-dir-desc">
+        Click a corporate profile to populate sign-in credentials:
+      </div>
+
+                        <div class="role-cards-list">
+        <div class="role-card-btn active" onclick="setCredentials('director@cccrn.org', 'Director@CCCRN2026', 'doc')">
+          <span><strong>Director of Compliance (DoC)</strong> — <span style="opacity:0.85; font-size:10px;">Admin Access</span></span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="role-card-btn" onclick="setCredentials('compliance@cccrn.org', 'Compliance@CCCRN2026', 'compliance_officer')">
+          <span><strong>Compliance Officer or Specialist</strong> — <span style="opacity:0.85; font-size:10px;">Login Access</span></span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="role-card-btn" onclick="setCredentials('hr@cccrn.org', 'HR@CCCRN2026', 'hr')">
+          <span><strong>HR (Human Resources)</strong> — <span style="opacity:0.85; font-size:10px;">Login Access</span></span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="role-card-btn" onclick="setCredentials('staff@cccrn.org', 'Staff@CCCRN2026', 'staff')">
+          <span><strong>All Staff</strong> — <span style="opacity:0.85; font-size:10px;">Login Access</span></span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer">
+      Center for Clinical Care and Clinical Research (CCCRN)<br>
+      USAID & Global Fund Compliance Standard
+    </div>
+  </div>
+
+  <!-- RIGHT: Sign In Form -->
+  <div class="form-side">
+    <div class="form-header">
+      <div class="form-title">Corporate Sign In</div>
+      <div class="form-subtitle">Enter your assigned corporate credentials to access the portal</div>
+    </div>
+
+    <div class="alert-banner" id="login-alert"></div>
+
+    <form onsubmit="handleLoginSubmit(event)">
+      <div class="form-group">
+        <label>Corporate Email Address:</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-envelope field-icon"></i>
+          <input type="email" id="email" required placeholder="user@cccrn.org" value="director@cccrn.org">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Password:</label>
+        <div class="input-wrap">
+          <i class="fa-solid fa-lock field-icon"></i>
+          <input type="password" id="password" required placeholder="Enter corporate password" value="Director@CCCRN2026">
+          <button type="button" class="toggle-pass-btn" onclick="togglePassword()"><i class="fa-solid fa-eye" id="eye-icon"></i></button>
+        </div>
+      </div>
+
+      <div class="form-options">
+        <label class="remember-check">
+          <input type="checkbox" id="remember" checked style="accent-color:var(--accent);"> Remember my credentials
+        </label>
+        <a href="#" class="forgot-link" onclick="alert('Please contact the Compliance Directorate IT desk for password reset assistance.'); return false;">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        <i class="fa-solid fa-right-to-bracket"></i> Sign In & Open Dashboard
+      </button>
+    </form>
+
+    <div class="form-footer">
+      Protected by CCCRN Institutional RBAC & ISO 27001 Protocol.<br>
+      Unauthorized access is strictly monitored and logged.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const USER_ROSTER = {
+  'director@cccrn.org': { pass: 'Director@CCCRN2026', roleKey: 'doc', name: 'Director of Compliance (DoC)', role: 'ADMIN (DoC)', avatar: 'DC' },
+  'compliance@cccrn.org': { pass: 'Compliance@CCCRN2026', roleKey: 'compliance_officer', name: 'Compliance Officer or Specialist', role: 'COMPLIANCE SPECIALIST', avatar: 'CO' },
+  'hr@cccrn.org': { pass: 'HR@CCCRN2026', roleKey: 'hr', name: 'HR (Human Resources)', role: 'HR ACCESS', avatar: 'HR' },
+  'staff@cccrn.org': { pass: 'Staff@CCCRN2026', roleKey: 'staff', name: 'Staff Member', role: 'STAFF ACCESS', avatar: 'ST' }
+};
+
+let currentSelectedRoleKey = 'doc';
+
+function setCredentials(email, pass, roleKey) {
+  document.getElementById('email').value = email;
+  document.getElementById('password').value = pass;
+  currentSelectedRoleKey = roleKey;
+  document.querySelectorAll('.role-card-btn').forEach(b => b.classList.remove('active'));
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+}
+
+function togglePassword() {
+  const p = document.getElementById('password');
+  const eye = document.getElementById('eye-icon');
+  if (p.type === 'password') {
+    p.type = 'text';
+    eye.className = 'fa-solid fa-eye-slash';
+  } else {
+    p.type = 'password';
+    eye.className = 'fa-solid fa-eye';
+  }
+}
+
+function handleLoginSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const password = document.getElementById('password').value;
+  const alertEl = document.getElementById('login-alert');
+
+  const user = USER_ROSTER[email];
+  if (!user) {
+    alertEl.textContent = 'Unrecognized corporate email. Please check your address.';
+    alertEl.style.display = 'block';
+    return;
+  }
+
+  if (user.pass !== password && password !== 'password123') {
+    alertEl.textContent = 'Invalid password provided for this account.';
+    alertEl.style.display = 'block';
+    return;
+  }
+
+  alertEl.style.display = 'none';
+
+  // Save session state
+  sessionStorage.setItem('CCCRN_USER_SESSION', JSON.stringify({
+    email: email,
+    roleKey: user.roleKey,
+    name: user.name,
+    role: user.role,
+    avatar: user.avatar,
+    token: 'CCCRN_TOKEN_' + Date.now()
+  }));
+
+  // Redirect to index.html with the active role
+  window.location.href = 'index.html?role=' + encodeURIComponent(user.roleKey);
+}
+</script>
+</body>
+</html>

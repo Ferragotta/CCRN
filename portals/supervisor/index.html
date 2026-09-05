@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCCRN ComplianceIQ — Supervisor Review & Evaluation Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-title">
+        CCCRN ComplianceIQ
+        <span class="logo-badge">ENTERPRISE</span>
+      </div>
+      <div class="logo-sub">Supervisor Review & Evaluation Portal</div>
+    </div>
+
+    <div class="nav">
+      
+<div class="nav-section">Supervisor Workspace</div>
+<div class="nav-item active"><span class="icon"><i class="fa-solid fa-table-columns"></i></span> Supervisor Dashboard</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-user-check"></i></span> Goal Approvals</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-user-gear"></i></span> Monthly Behavioral (/40)</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-graduation-cap"></i></span> Team Training</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-plane-departure"></i></span> Travel Approvals</div>
+
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">EN</div>
+        <div style="min-width:0;">
+          <div class="user-name">Staff Supervisor</div>
+          <div class="user-role">SUPERVISOR ACCESS</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <button onclick="Auth.signout()" class="btn btn-sm btn-outline" style="width:100%;"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN VIEWPORT -->
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title" id="page-title">Supervisor Review & Evaluation Portal</div>
+      <div class="topbar-actions">
+        <div class="live-label"><div class="live-dot"></div> Live Monitor</div>
+        <button class="btn btn-outline" onclick="showModal('modal-complaint')"><i class="fa-solid fa-plus"></i> New Complaint</button>
+        <button onclick="Auth.signout()" class="btn btn-primary"><i class="fa-solid fa-power-off"></i> Sign Out</button>
+      </div>
+    </header>
+
+    <div class="content">
+      
+<div class="stats-grid">
+  <div class="stat-card blue"><div class="stat-label">Total Supervisees</div><div class="stat-value">8</div><div class="stat-delta">Clinical Operations</div></div>
+  <div class="stat-card amber"><div class="stat-label">Pending Goal Approvals</div><div class="stat-value" id="sup-stat-pending">1</div><div class="stat-delta">Action Required</div></div>
+  <div class="stat-card purple"><div class="stat-label">Ungraded Behaviourals</div><div class="stat-value">1</div><div class="stat-delta">February Cycle</div></div>
+  <div class="stat-card green"><div class="stat-label">Team Compliance Rate</div><div class="stat-value">92%</div><div class="stat-delta"><span>↑ 4%</span> this month</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title"><i class="fa-solid fa-user-check"></i> Supervisee Objectives Approval Queue</div></div>
+  <table>
+    <thead><tr><th>Staff Name</th><th>Quarter</th><th>Objective</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody id="sup-objs-tbody"></tbody>
+  </table>
+</div>
+
+    </div>
+  </main>
+</div>
+
+<!-- GLOBAL GRIEVANCE MODAL -->
+<div class="modal-overlay" id="modal-complaint">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa-solid fa-inbox"></i> Submit Compliance Complaint</div>
+      <button class="modal-close" onclick="closeModal('modal-complaint')">&times;</button>
+    </div>
+    <form onsubmit="handleLiveComplaintSubmit(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Category:</label>
+          <select id="cmp-cat" required>
+            <option>Procurement</option><option>Safeguarding</option><option>HR</option><option>Finance</option><option>Data</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>State Location:</label>
+          <select id="cmp-state" required>
+            <option>Kano</option><option>Lagos</option><option>Rivers</option><option>Abuja FCT</option><option>Kaduna</option><option>Borno</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Confidentiality:</label>
+          <select id="cmp-anon">
+            <option value="Named">Disclose Identity to Compliance Directorate</option>
+            <option value="Anonymous">Submit Anonymously (Identity Protected)</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Incident Details:</label>
+          <textarea id="cmp-desc" required placeholder="Describe the compliance incident in detail..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-complaint')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Complaint</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="notif" id="notif">
+  <div class="notif-title" id="notif-title">Success</div>
+  <div id="notif-msg">Action completed</div>
+</div>
+
+<script src="../../assets/js/data.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script>
+// Route Protection Guard
+const activeUser = Auth.guard('supervisor');
+
+function showModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.add('open');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.remove('open');
+}
+function showToast(title, msg, type = 'success') {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-title').textContent = title;
+  document.getElementById('notif-msg').textContent = msg;
+  n.className = 'notif show ' + type;
+  setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+function handleLiveComplaintSubmit(e) {
+  e.preventDefault();
+  const complaints = RealTimeStore.get('complaints');
+  const newCmp = {
+    id: 'CMP-0' + (complaints.length + 48),
+    cat: document.getElementById('cmp-cat').value,
+    state: document.getElementById('cmp-state').value,
+    by: document.getElementById('cmp-anon').value === 'Anonymous' ? 'Anonymous' : (activeUser ? activeUser.name : 'Staff Supervisor'),
+    date: '01 Mar 2026',
+    desc: document.getElementById('cmp-desc').value,
+    status: 'Open',
+    priority: 'High'
+  };
+  RealTimeStore.addComplaint(newCmp);
+  closeModal('modal-complaint');
+  showToast('Complaint Registered', 'Grievance submitted into compliance repository.');
+  setTimeout(() => renderLiveViews(), 400);
+}
+
+
+function renderLiveViews() {
+  const objs = RealTimeStore.get('pdpObjectives');
+  const tbody = document.getElementById('sup-objs-tbody');
+  tbody.innerHTML = objs.map(o => `
+    <tr>
+      <td><strong>${o.staff}</strong></td>
+      <td>${o.quarter}</td>
+      <td>${o.title}</td>
+      <td><span class="pill ${o.approved?'pill-closed':'pill-progress'}">${o.approved?'Approved':'Pending Approval'}</span></td>
+      <td>
+        ${!o.approved ? `<button class="btn btn-sm btn-primary" onclick="approveGoalLive('${o.id}')">Approve Goal</button>` : `<span style="font-size:11px; color:var(--success);">✓ Verified</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function approveGoalLive(objId) {
+  const objs = RealTimeStore.get('pdpObjectives');
+  const o = objs.find(x => x.id === objId);
+  if (o) {
+    o.approved = true;
+    RealTimeStore.set('pdpObjectives', objs);
+    showToast('Objective Approved', 'Goal verified and approved for supervisee.');
+    renderLiveViews();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', renderLiveViews);
+
+</script>
+</body>
+</html>
