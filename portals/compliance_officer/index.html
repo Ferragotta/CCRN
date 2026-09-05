@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCCRN ComplianceIQ — Compliance Operations & Case Triage Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-title">
+        CCCRN ComplianceIQ
+        <span class="logo-badge">ENTERPRISE</span>
+      </div>
+      <div class="logo-sub">Compliance Operations & Case Triage Portal</div>
+    </div>
+
+    <div class="nav">
+      
+<div class="nav-section">Operations</div>
+<div class="nav-item active"><span class="icon"><i class="fa-solid fa-table-columns"></i></span> Operations Dashboard</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-inbox"></i></span> Complaints Triage</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-circle-check"></i></span> CAP Evidence Review</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-triangle-exclamation"></i></span> Risk Register</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-shield-halved"></i></span> Investigations</div>
+<div class="nav-item"><span class="icon"><i class="fa-solid fa-plane-departure"></i></span> Travel & Boarding Passes</div>
+
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="avatar">AY</div>
+        <div style="min-width:0;">
+          <div class="user-name">Compliance Officer</div>
+          <div class="user-role">COMPLIANCE_OFFICER ACCESS</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <button onclick="Auth.signout()" class="btn btn-sm btn-outline" style="width:100%;"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN VIEWPORT -->
+  <main class="main">
+    <header class="topbar">
+      <div class="page-title" id="page-title">Compliance Operations & Case Triage Portal</div>
+      <div class="topbar-actions">
+        <div class="live-label"><div class="live-dot"></div> Live Monitor</div>
+        <button class="btn btn-outline" onclick="showModal('modal-complaint')"><i class="fa-solid fa-plus"></i> New Complaint</button>
+        <button onclick="Auth.signout()" class="btn btn-primary"><i class="fa-solid fa-power-off"></i> Sign Out</button>
+      </div>
+    </header>
+
+    <div class="content">
+      
+<div class="stats-grid">
+  <div class="stat-card blue"><div class="stat-label">Complaints in Triage</div><div class="stat-value" id="co-stat-cmp">7</div><div class="stat-delta">Action Required</div></div>
+  <div class="stat-card red"><div class="stat-label">Active CAPs</div><div class="stat-value" id="co-stat-cap">12</div><div class="stat-delta">Evidence Pending</div></div>
+  <div class="stat-card amber"><div class="stat-label">High / Critical Risks</div><div class="stat-value">8</div><div class="stat-delta">Active Mitigation</div></div>
+  <div class="stat-card green"><div class="stat-label">Pending Boarding Passes</div><div class="stat-value" id="co-stat-tvl">4</div><div class="stat-delta">Ready for Clearance</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-inbox"></i> Complaints Triage Desk</div></div>
+    <table>
+      <thead><tr><th>Ref#</th><th>Category</th><th>Complainant</th><th>Action</th></tr></thead>
+      <tbody id="co-complaints-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-circle-check"></i> CAP State Evidence Verification</div></div>
+    <table>
+      <thead><tr><th>CAP ID</th><th>State</th><th>Evidence File</th><th>Action</th></tr></thead>
+      <tbody id="co-caps-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title"><i class="fa-solid fa-plane-departure"></i> Flight Boarding Pass Vendor Payment Clearance</div></div>
+  <table>
+    <thead><tr><th>Ticket ID</th><th>Traveler</th><th>Route</th><th>Boarding Pass</th><th>Payment Status</th><th>Action</th></tr></thead>
+    <tbody id="co-travel-tbody"></tbody>
+  </table>
+</div>
+
+    </div>
+  </main>
+</div>
+
+<!-- GLOBAL GRIEVANCE MODAL -->
+<div class="modal-overlay" id="modal-complaint">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fa-solid fa-inbox"></i> Submit Compliance Complaint</div>
+      <button class="modal-close" onclick="closeModal('modal-complaint')">&times;</button>
+    </div>
+    <form onsubmit="handleLiveComplaintSubmit(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Category:</label>
+          <select id="cmp-cat" required>
+            <option>Procurement</option><option>Safeguarding</option><option>HR</option><option>Finance</option><option>Data</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>State Location:</label>
+          <select id="cmp-state" required>
+            <option>Kano</option><option>Lagos</option><option>Rivers</option><option>Abuja FCT</option><option>Kaduna</option><option>Borno</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Confidentiality:</label>
+          <select id="cmp-anon">
+            <option value="Named">Disclose Identity to Compliance Directorate</option>
+            <option value="Anonymous">Submit Anonymously (Identity Protected)</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Incident Details:</label>
+          <textarea id="cmp-desc" required placeholder="Describe the compliance incident in detail..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-complaint')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Complaint</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="notif" id="notif">
+  <div class="notif-title" id="notif-title">Success</div>
+  <div id="notif-msg">Action completed</div>
+</div>
+
+<script src="../../assets/js/data.js"></script>
+<script src="../../assets/js/auth.js"></script>
+<script>
+// Route Protection Guard
+const activeUser = Auth.guard('compliance_officer');
+
+function showModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.add('open');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  if (m) m.classList.remove('open');
+}
+function showToast(title, msg, type = 'success') {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-title').textContent = title;
+  document.getElementById('notif-msg').textContent = msg;
+  n.className = 'notif show ' + type;
+  setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+function handleLiveComplaintSubmit(e) {
+  e.preventDefault();
+  const complaints = RealTimeStore.get('complaints');
+  const newCmp = {
+    id: 'CMP-0' + (complaints.length + 48),
+    cat: document.getElementById('cmp-cat').value,
+    state: document.getElementById('cmp-state').value,
+    by: document.getElementById('cmp-anon').value === 'Anonymous' ? 'Anonymous' : (activeUser ? activeUser.name : 'Compliance Officer'),
+    date: '01 Mar 2026',
+    desc: document.getElementById('cmp-desc').value,
+    status: 'Open',
+    priority: 'High'
+  };
+  RealTimeStore.addComplaint(newCmp);
+  closeModal('modal-complaint');
+  showToast('Complaint Registered', 'Grievance submitted into compliance repository.');
+  setTimeout(() => renderLiveViews(), 400);
+}
+
+
+function renderLiveViews() {
+  const complaints = RealTimeStore.get('complaints');
+  const caps = RealTimeStore.get('caps');
+  const travel = RealTimeStore.get('travel');
+
+  document.getElementById('co-stat-cmp').textContent = complaints.length;
+  document.getElementById('co-stat-cap').textContent = caps.length;
+  document.getElementById('co-stat-tvl').textContent = travel.filter(t => t.paymentStatus !== 'Cleared').length;
+
+  const cmpTbody = document.getElementById('co-complaints-tbody');
+  cmpTbody.innerHTML = complaints.map(c => `
+    <tr>
+      <td><strong>${c.id}</strong></td>
+      <td><span class="pill pill-info">${c.cat}</span></td>
+      <td>${c.by}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="coConvertCap('${c.id}')">Convert to CAP</button>
+      </td>
+    </tr>
+  `).join('');
+
+  const capTbody = document.getElementById('co-caps-tbody');
+  capTbody.innerHTML = caps.map(cap => `
+    <tr>
+      <td><strong>${cap.id}</strong></td>
+      <td>${cap.state}</td>
+      <td>${cap.ev ? `<span class="pill pill-closed">📄 ${cap.ev}</span>` : `<span class="pill pill-progress">Awaiting State</span>`}</td>
+      <td>
+        ${cap.status === 'Evidence Submitted' ? `<button class="btn btn-sm btn-success" onclick="coCloseCap('${cap.id}')">Verify & Close</button>` : `<span style="font-size:11px; color:var(--text-muted);">${cap.status}</span>`}
+      </td>
+    </tr>
+  `).join('');
+
+  const tvlTbody = document.getElementById('co-travel-tbody');
+  tvlTbody.innerHTML = travel.map(t => `
+    <tr>
+      <td><strong>${t.id}</strong></td>
+      <td>${t.traveler}</td>
+      <td>${t.route}</td>
+      <td>${t.boardingPass ? `<span class="pill pill-closed">🎫 Verified</span>` : `<span class="pill pill-open">Missing</span>`}</td>
+      <td><span class="pill ${t.paymentStatus==='Cleared'?'pill-closed':'pill-open'}">${t.paymentStatus}</span></td>
+      <td>
+        ${t.status === 'Utilized' && t.paymentStatus !== 'Cleared' ? `<button class="btn btn-sm btn-success" onclick="coClearPayment('${t.id}')">Clear Invoice</button>` : `<span style="font-size:11px; color:var(--text-muted);">-</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function coConvertCap(cmpId) {
+  const complaints = RealTimeStore.get('complaints');
+  const c = complaints.find(x => x.id === cmpId);
+  if (c) {
+    c.status = 'Converted to CAP';
+    RealTimeStore.set('complaints', complaints);
+    const newCap = {
+      id: 'CAP-0' + (RealTimeStore.get('caps').length + 30),
+      issue: 'Remediation: ' + c.desc,
+      state: c.state,
+      linked: c.id,
+      resp: 'Responsible Lead',
+      deadline: '2026-03-31',
+      status: 'Open',
+      ev: null,
+      evNotes: null
+    };
+    RealTimeStore.addCap(newCap);
+    showToast('Converted to CAP', 'CAP issued from ' + cmpId);
+    renderLiveViews();
+  }
+}
+
+function coCloseCap(capId) {
+  RealTimeStore.closeCap(capId);
+  showToast('CAP Closed', 'State evidence approved and CAP closed.');
+  renderLiveViews();
+}
+
+function coClearPayment(ticketId) {
+  RealTimeStore.clearTravelPayment(ticketId);
+  showToast('Payment Cleared', 'Vendor invoice authorized for payment.');
+  renderLiveViews();
+}
+
+window.addEventListener('DOMContentLoaded', renderLiveViews);
+
+</script>
+</body>
+</html>

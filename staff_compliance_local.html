@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCCRN ComplianceIQ — Standalone Staff Compliance Hub (LocalStorage)</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --accent: #02367B;
+            --accent-light: rgba(2, 54, 123, 0.08);
+            --danger: #dc2626;
+            --success: #059669;
+            --warning: #d97706;
+            --text: #0f172a;
+            --text-dim: #334155;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --surface: #ffffff;
+            --surface2: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f1f5f9;
+            color: var(--text);
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+            overflow-x: hidden;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 7px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: #012454;
+            border-color: #012454;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-dim);
+            border-color: var(--border);
+        }
+
+        .btn-outline:hover {
+            background: var(--surface2);
+            border-color: var(--text-muted);
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pill-open { background: #fee2e2; color: #991b1b; }
+        .pill-progress { background: #fef3c7; color: #92400e; }
+        .pill-closed { background: #dcfce7; color: #166534; }
+
+        .tab {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            font-weight: 700;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-dialog {
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            padding: 20px;
+        }
+
+        .modal-header {
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+    </style>
+</head>
+<body>
+
+    <div style="background: #0f172a; color: #ffffff; padding: 8px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <i class="fa-solid fa-hard-drive me-2" style="color: #38bdf8;"></i>
+            <strong>Standalone LocalStorage Testing Environment</strong> · All mutations (attendance, leave, complaints, CAP evidence, PDP, policies) persist locally in your browser.
+        </div>
+        <div style="font-size: 11px; color: #94a3b8;">
+            Zero Backend Dependencies Required
+        </div>
+    </div>
+
+    
+<div id="staffModuleContainer" style="padding-bottom: 40px; width: 100%; max-width: 100%; box-sizing: border-box; overflow-x: hidden;">
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         ATTENDIFY HOST CONTEXT & STAFF SSO COMMAND BANNER
+         ══════════════════════════════════════════════════════════════════ -->
+    <div style="background: linear-gradient(135deg, #0d9488 0%, #02367B 65%, #012454 100%); color: #ffffff; padding: 22px 26px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 52px; height: 52px; border-radius: 50%; background: #ffffff; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; border: 3px solid #55E2E9; box-shadow: 0 2px 6px rgba(0,0,0,0.15);" id="staffAvatarDisplay">
+                FB
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: #55E2E9; color: #012454; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-link me-1"></i> Attendify SSO Verified
+                    </span>
+                    <span style="font-size: 11px; opacity: 0.9; color: #e0f2fe;">
+                        <i class="fa-solid fa-id-badge me-1"></i> <span id="staffIdDisplay">CCCRN-STF-0142</span>
+                    </span>
+                    <span style="background: rgba(255,255,255,0.15); font-size: 10px; padding: 2px 6px; border-radius: 4px;">
+                        <i class="fa-solid fa-location-dot me-1"></i> <span id="staffDutyStationDisplay">Lagos State Office · Cluster A</span>
+                    </span>
+                    <span id="currentRoleBadgePill" class="pill" style="background: #fef08a; color: #854d0e; font-size: 10px; font-weight: 800;">
+                        STAFF ROLE
+                    </span>
+                </div>
+                <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; margin: 4px 0 2px; color: #ffffff;" id="staffNameDisplay">
+                    Fatima Bello
+                </h1>
+                <div style="font-size: 12px; color: #e2e8f0; opacity: 0.95;">
+                    <span id="staffRoleDeptDisplay">Senior Technical Officer · Clinical Services & Public Health</span> · Supervisor: <strong id="staffSupervisorDisplay" style="color: #55E2E9;">Dr. Ngozi Adeyemi</strong> · HOD: <strong style="color: #55E2E9;">Dr. Amaka Okonkwo</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Role Simulator Toggle & Local Storage Controls -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+            <span style="font-size: 10px; color: #a7f3d0; background: rgba(16, 185, 129, 0.2); padding: 3px 7px; border-radius: 4px; border: 1px solid rgba(52, 211, 153, 0.4); font-weight: 700;">
+                <i class="fa-solid fa-database me-1"></i> LocalStorage Live
+            </span>
+            <button class="btn btn-sm" onclick="CCCRN_STORE.reset()" style="font-size: 10px; padding: 2px 7px; background: rgba(255,255,255,0.15); color: #ffffff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;" title="Reset LocalStorage test data">
+                <i class="fa-solid fa-rotate-left me-1"></i> Reset
+            </button>
+            <span style="font-size: 11px; font-weight: 700; color: #55E2E9; margin-left: 4px;"><i class="fa-solid fa-user-gear me-1"></i> Perspective:</span>
+            <button class="btn btn-sm btn-staff-role active" onclick="switchStaffRolePerspective('staff', this)" style="font-size: 10px; padding: 3px 8px; background: #55E2E9; color: #012454; font-weight: 800; border: none; border-radius: 4px;">Staff</button>
+            <button class="btn btn-sm btn-staff-role" onclick="switchStaffRolePerspective('supervisor', this)" style="font-size: 10px; padding: 3px 8px; background: transparent; color: #ffffff; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;">Supervisor</button>
+            <button class="btn btn-sm btn-staff-role" onclick="switchStaffRolePerspective('hod', this)" style="font-size: 10px; padding: 3px 8px; background: transparent; color: #ffffff; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;">HOD</button>
+            <button class="btn btn-sm btn-staff-role" onclick="switchStaffRolePerspective('stl', this)" style="font-size: 10px; padding: 3px 8px; background: transparent; color: #ffffff; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;">State Lead (STL)</button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         EMAIL NOTIFICATION BANNER (MANDATORY TRAINING / OBJECTIVE NOTICES)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffEmailNoticeBanner" style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #d97706; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0;">
+                <i class="fa-solid fa-envelope-open-text"></i>
+            </div>
+            <div>
+                <div style="font-weight: 700; font-size: 12px; color: #92400e;">
+                    <i class="fa-solid fa-bell me-1"></i> Email Broadcast: New Mandatory Training Published: "TR-02 PSEA &amp; Safeguarding Standards (2026)"
+                </div>
+                <div style="font-size: 11px; color: #78350f; margin-top: 1px;">
+                    Dispatched by Compliance Directorate · Required for all clinical and field personnel · Deadline: <strong>15 March 2026</strong>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary btn-sm" onclick="switchStaffMainTab('training', document.querySelectorAll('.staff-main-tab')[3])" style="font-size: 11px; padding: 4px 12px; background: #d97706; border-color: #d97706;">
+                <i class="fa-solid fa-graduation-cap me-1"></i> Launch Training &amp; Log Attendance
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('staffEmailNoticeBanner').style.display='none'" style="font-size: 11px; padding: 4px 8px;">Dismiss</button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         STAFF ATTENDANCE CLOCK & PERSONAL LEAVE DESK
+         • Staff can mark attendance and apply for leave
+         • NO notifications of other staff leave requests (solely for HR/Supervisor/HOD)
+         ══════════════════════════════════════════════════════════════════ -->
+    <!-- STAFF ATTENDANCE CLOCK (ATTENDIFY BIOMETRICS) -->
+    <div class="card" style="margin-bottom: 20px; padding: 14px 18px; border-left: 4px solid #0d9488; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(13, 148, 136, 0.12); color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                    <i class="fa-solid fa-fingerprint"></i>
+                </div>
+                <div>
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text);">
+                        Daily Biometric Attendance
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                        Terminal: <strong>BIO-LOS-01</strong> · On-Time Arrival Score: <strong style="color: #059669;">98.4%</strong> · Synced via Attendify
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span id="staffClockStatusPill" class="pill pill-closed" style="font-size: 10px; font-weight: 700; padding: 5px 10px;">
+                    Clocked In · 07:48 AM
+                </span>
+                <button id="btnStaffClockToggle" class="btn btn-outline btn-sm" onclick="toggleStaffClock()" style="font-size: 11px; padding: 6px 14px; font-weight: 700; border-color: #0d9488; color: #0d9488;">
+                    <i class="fa-solid fa-clock me-1"></i> Clock-Out for the Day
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supervisor Supervisee Leave Notification Queue (Visible ONLY when Supervisor or HOD perspective is toggled) -->
+    <div id="supervisorLeaveQueueWrapper" style="display: none; background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 800; color: #86198f; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-bell"></i> Supervisee Leave Applications Pending Your Approval (Supervisor Console)
+            </div>
+            <span class="badge" style="background: #c026d3; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 10px;">1 Action Required</span>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #f5d0fe; border-radius: 6px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+            <div>
+                <strong>Biodun Alade</strong> (Technical Officer · Facility B) applied for <strong>3 Days Casual Leave</strong> (16 Mar — 18 Mar 2026). Reliever: Fatima Bello.
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn btn-primary btn-sm" onclick="alert('Biodun Alade leave request approved by Supervisor.')" style="font-size: 10px; padding: 2px 8px; background: #059669; border-color: #059669;">Approve</button>
+                <button class="btn btn-outline btn-sm" onclick="alert('Biodun Alade leave request rejected.')" style="font-size: 10px; padding: 2px 8px; color: #dc2626; border-color: #fecaca;">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 0: MY LEAVE MANAGEMENT & APPLICATIONS (DEDICATED SECTION)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="staff-module-section" id="staffSectionLeave" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-calendar-check" style="color: #0077b6;"></i> My Leave Entitlements &amp; Applications Desk
+                </h3>
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Apply for leave, manage designated relievers, track real-time HR approvals, and review leave balance deductions
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffApplyLeave')" style="background: #0077b6; border-color: #0077b6; font-size: 12px; padding: 7px 16px; font-weight: 700;">
+                <i class="fa-solid fa-calendar-plus me-1"></i> Apply for Leave
+            </button>
+        </div>
+
+        <!-- Leave Balances Row -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+            <div class="card" style="margin-bottom: 0; border-left: 4px solid var(--accent); background: #ffffff; padding: 14px 18px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">ANNUAL LEAVE</div>
+                <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); margin: 4px 0;" id="staffAnnualBalanceDisplay">14 <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);">/ 21 Days</span></div>
+                <div style="font-size: 11px; color: var(--text-muted);">7 days utilized this fiscal year</div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0; border-left: 4px solid #d97706; background: #ffffff; padding: 14px 18px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">CASUAL LEAVE</div>
+                <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #d97706; margin: 4px 0;" id="staffCasualBalanceDisplay">4 <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);">/ 7 Days</span></div>
+                <div style="font-size: 11px; color: var(--text-muted);">3 days utilized</div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0; border-left: 4px solid #059669; background: #ffffff; padding: 14px 18px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">SICK LEAVE</div>
+                <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #059669; margin: 4px 0;" id="staffSickBalanceDisplay">10 <span style="font-size: 13px; font-weight: 500; color: var(--text-muted);">/ 12 Days</span></div>
+                <div style="font-size: 11px; color: var(--text-muted);">2 days certified medical leave</div>
+            </div>
+        </div>
+
+        <!-- Personal Leave Applications Register -->
+        <div class="card" style="margin-bottom: 0; padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <div style="font-weight: 700; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-list-check" style="color: #0077b6;"></i> My Leave Applications History
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-rotate me-1"></i> Live synced with HR Leave Register</span>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                    <tr style="background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); font-size: 11px;">
+                        <th style="padding: 10px 8px; width: 14%;">Request ID</th>
+                        <th style="padding: 10px 8px; width: 16%;">Category</th>
+                        <th style="padding: 10px 8px; width: 28%;">Leave Period &amp; Days</th>
+                        <th style="padding: 10px 8px; width: 22%;">Assigned Reliever</th>
+                        <th style="padding: 10px 8px; width: 20%; text-align: center;">Approval Status</th>
+                    </tr>
+                </thead>
+                <tbody id="staffLeaveHistoryTableBody">
+                    <!-- Dynamic Rows from CCCRN_STORE and Backend -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 1: COMPLAINTS & GRIEVANCES
+         • All staff can log complaint
+         • See status of complaint
+         • History of previous complaints & status on dashboard
+         • Can view CAP
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionComplaints" class="staff-module-section" style="display: block;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-inbox text-primary"></i> My Confidential Complaints &amp; Grievance History
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        All staff are empowered to log complaints with zero-retaliation protection · Track resolution status and linked CAPs
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffLogComplaint')" style="font-size: 11px; background: #dc2626; border-color: #dc2626;">
+                    <i class="fa-solid fa-plus me-1"></i> Log New Complaint
+                </button>
+            </div>
+
+            <!-- History Table (Zero Horizontal Scroll) -->
+            <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 12%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Ref Code</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Date Logged</th>
+                            <th style="width: 18%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Category</th>
+                            <th style="width: 26%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Summary / Subject</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Severity</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Status</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Linked CAP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffComplaintsHistoryTable">
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">CMP-2026-049</td>
+                            <td style="padding: 10px 8px; font-size: 11px; color: var(--text-muted);">24 Feb 2026</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Procurement Defect</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 600; color: var(--text);">Facility PPE Consumables Shortage &amp; Substandard Batches</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Reported to DoC; vendor batch recalled for testing.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-open" style="font-size: 9px; font-weight: 700;">High</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-progress" style="font-size: 9px;">Under Investigation</span></td>
+                            <td style="padding: 10px 8px; text-align: center;">
+                                <button class="btn btn-outline btn-sm" onclick="viewLinkedCapModal('CAP-2026-012', 'Facility PPE Supply Chain Rectification', 'Lagos Office', 'In Progress')" style="padding: 2px 6px; font-size: 10px; color: var(--accent);">
+                                    <i class="fa-solid fa-eye me-1"></i> CAP-012
+                                </button>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">CMP-2026-033</td>
+                            <td style="padding: 10px 8px; font-size: 11px; color: var(--text-muted);">15 Jan 2026</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Workplace Safety</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 600; color: var(--text);">Inadequate Field Outreach Security Escort</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Referred to Operations Lead; revised route security clearance instituted.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-progress" style="font-size: 9px; font-weight: 700;">Medium</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Resolved &amp; Closed</span></td>
+                            <td style="padding: 10px 8px; text-align: center;">
+                                <button class="btn btn-outline btn-sm" onclick="viewLinkedCapModal('CAP-2026-008', 'Field Operations Safety & Escort Protocol', 'Lagos Office', 'Closed & Verified')" style="padding: 2px 6px; font-size: 10px; color: var(--accent);">
+                                    <i class="fa-solid fa-eye me-1"></i> CAP-008
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 2: CORRECTIVE ACTION PLANS (CAP)
+         • Can view CAP
+         • Can submit "State Evidence"
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionCap" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-circle-check text-primary"></i> Corrective Action Plans (CAP) — State Roster
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        View active corrective plans for your state office and submit verifiable state evidence
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openModalSubmitStateEvidence()" style="font-size: 11px;">
+                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> Submit State Evidence
+                </button>
+            </div>
+
+            <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 10%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">CAP Ref</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">State / Facility</th>
+                            <th style="width: 15%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Category</th>
+                            <th style="width: 33%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Action Plan &amp; Measurable Target</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Target Date</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Status</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">State Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffCapTableBody">
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">CAP-2026-012</td>
+                            <td style="padding: 10px 8px; font-size: 11px;">Lagos (Facility Hub A)</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Procurement &amp; Supplies</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 700; color: var(--text);">Facility PPE Supply Chain Rectification</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Mandatory physical inventory audit and delivery verification signed by site pharmacist.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">20 Mar 2026</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-progress" style="font-size: 9px;">In Progress</span></td>
+                            <td style="padding: 10px 8px; text-align: center;">
+                                <button class="btn btn-primary btn-sm" onclick="openModalSubmitStateEvidence('CAP-2026-012')" style="font-size: 10px; padding: 3px 8px;">
+                                    <i class="fa-solid fa-upload me-1"></i> Submit
+                                </button>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">CAP-2026-009</td>
+                            <td style="padding: 10px 8px; font-size: 11px;">Lagos (Outreach Unit)</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Data Quality &amp; Records</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 700; color: var(--text);">Monthly Electronic Medical Records (EMR) Backlog Clearance</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">100% concordance between physical registers and National EMR cloud sync.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">28 Feb 2026</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Evidence Verified</span></td>
+                            <td style="padding: 10px 8px; text-align: center;">
+                                <button class="btn btn-outline btn-sm" onclick="alert('Viewing State Evidence: EMR_Audit_Lagos_Feb2026.pdf (Verified by DoC)')" style="padding: 3px 6px; font-size: 10px;">
+                                    <i class="fa-solid fa-eye"></i> View
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 3: PERFORMANCE DEVELOPMENT PLAN (PDP 150)
+         • All Staff: Set objectives, submit evidence, submit innovation/creative, view monthly/quarterly/annual performance
+         • Supervisor: Approve PDP, review & approve evidence, grade monthly Behavioral, see all supervisees
+         • HOD: Grade staff creativity/innovation
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionPdp" class="staff-module-section" style="display: none;">
+        <!-- Sub-Tabs for PDP System -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm pdp-sub-tab active" onclick="switchStaffPdpSubTab('objectives', this)" style="font-size: 11px; font-weight: 700;">
+                    <i class="fa-solid fa-list-check me-1"></i> My Objectives (/60)
+                </button>
+                <button class="btn btn-outline btn-sm pdp-sub-tab" onclick="switchStaffPdpSubTab('evidence', this)" style="font-size: 11px; font-weight: 600;">
+                    <i class="fa-solid fa-cloud-arrow-up me-1"></i> Submit Evidence (/60)
+                </button>
+                <button class="btn btn-outline btn-sm pdp-sub-tab" onclick="switchStaffPdpSubTab('innovation', this)" style="font-size: 11px; font-weight: 600;">
+                    <i class="fa-solid fa-lightbulb me-1"></i> Submit Innovation (/50)
+                </button>
+                <button class="btn btn-outline btn-sm pdp-sub-tab" onclick="switchStaffPdpSubTab('scorecard', this)" style="font-size: 11px; font-weight: 600;">
+                    <i class="fa-solid fa-chart-line me-1"></i> Performance Scorecard
+                </button>
+                <!-- Supervisor / HOD Tab Options (Visible when toggled) -->
+                <button class="btn btn-outline btn-sm pdp-sub-tab" id="btnPdpSupervisorTab" onclick="switchStaffPdpSubTab('supervisor', this)" style="font-size: 11px; font-weight: 600; color: #c026d3; border-color: #f0abfc;">
+                    <i class="fa-solid fa-user-check me-1"></i> Supervisor Review &amp; Behavioral Grading
+                </button>
+                <button class="btn btn-outline btn-sm pdp-sub-tab" id="btnPdpHodTab" onclick="switchStaffPdpSubTab('hod', this)" style="font-size: 11px; font-weight: 600; color: #0284c7; border-color: #bae6fd;">
+                    <i class="fa-solid fa-medal me-1"></i> HOD Innovation Grading (/50)
+                </button>
+            </div>
+
+            <div>
+                <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffSetObjective')" style="font-size: 11px;">
+                    <i class="fa-solid fa-plus me-1"></i> Set New Objective
+                </button>
+            </div>
+        </div>
+
+        <!-- 3A. My Objectives Tab -->
+        <div id="staffPdpSubObjectives" class="pdp-sub-content" style="display: block;">
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-title" style="font-size: 13px; font-weight: 700;">My Agreed Performance Objectives (Target: 4 Core Objectives · Max 60 Points)</div>
+                    <span style="font-size: 11px; font-weight: 700; color: #059669;">Verified Objectives Score: 56 / 60 Pts</span>
+                </div>
+                <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                    <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                                <th style="width: 10%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Ref Code</th>
+                                <th style="width: 32%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Objective Statement</th>
+                                <th style="width: 18%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Verifiable Output</th>
+                                <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Weight</th>
+                                <th style="width: 15%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Approval Status</th>
+                                <th style="width: 15%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">OBJ-2026-01</td>
+                                <td style="padding: 10px 8px;">
+                                    <div style="font-weight: 700; color: var(--text);">Pediatric ART Viral Suppression &amp; Retention</div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">Ensure 95% viral load suppression among enrolled cohorts in supported facilities.</div>
+                                </td>
+                                <td style="padding: 10px 8px; font-size: 11px;">Monthly VL Register &amp; Cohort Analysis</td>
+                                <td style="padding: 10px 8px; text-align: center; font-weight: 700;">15 Pts</td>
+                                <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>Approved by Supervisor</span></td>
+                                <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModal('modalStaffSubmitPdpEvidence')" style="padding: 3px 6px; font-size: 10px;"><i class="fa-solid fa-upload me-1"></i> Evidence</button></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">OBJ-2026-02</td>
+                                <td style="padding: 10px 8px;">
+                                    <div style="font-weight: 700; color: var(--text);">Clinical Mentorship &amp; Quality Improvement Audits</div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">Conduct bi-weekly on-site clinical mentoring across 12 high-volume supported sites.</div>
+                                </td>
+                                <td style="padding: 10px 8px; font-size: 11px;">Mentorship Logsheets &amp; QI Action Plans</td>
+                                <td style="padding: 10px 8px; text-align: center; font-weight: 700;">15 Pts</td>
+                                <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>Approved by Supervisor</span></td>
+                                <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModal('modalStaffSubmitPdpEvidence')" style="padding: 3px 6px; font-size: 10px;"><i class="fa-solid fa-upload me-1"></i> Evidence</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3B. Submit Evidence Tab -->
+        <div id="staffPdpSubEvidence" class="pdp-sub-content" style="display: none;">
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-title" style="font-size: 13px; font-weight: 700;">Evidence Upload Queue &amp; Verification Progress (/60 Pts)</div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffSubmitPdpEvidence')" style="font-size: 11px;">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Attach New Evidence
+                    </button>
+                </div>
+                <div style="padding: 12px 0;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px;">
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">OBJ-01 Evidence</div>
+                            <div style="font-weight: 700; font-size: 13px; color: #14532d; margin: 2px 0;">VL_Suppression_Q1.xlsx</div>
+                            <span class="pill pill-closed" style="font-size: 9px;">Approved by Supervisor (15/15 Pts)</span>
+                        </div>
+                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 10px; font-weight: 700; color: #1e40af; text-transform: uppercase;">OBJ-02 Evidence</div>
+                            <div style="font-weight: 700; font-size: 13px; color: #1e3a8a; margin: 2px 0;">Site_Mentorship_Logs.pdf</div>
+                            <span class="pill pill-progress" style="font-size: 9px;">Review in Progress</span>
+                        </div>
+                        <div style="background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; padding: 12px;">
+                            <div style="font-size: 10px; font-weight: 700; color: #991b1b; text-transform: uppercase;">OBJ-03 &amp; 04 Evidence</div>
+                            <div style="font-weight: 700; font-size: 13px; color: #7f1d1d; margin: 2px 0;">Pending Submission</div>
+                            <button class="btn btn-outline btn-sm" onclick="openModal('modalStaffSubmitPdpEvidence')" style="font-size: 10px; margin-top: 4px; padding: 2px 8px;">Upload Now</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3C. Submit Innovation & Creativity Tab -->
+        <div id="staffPdpSubInnovation" class="pdp-sub-content" style="display: none;">
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="card-title" style="font-size: 13px; font-weight: 700;">Institutional Innovation &amp; Creative Deliverables (Graded by HOD · Max 50 Marks)</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Process improvements, cost-saving mechanisms, workflow automation, or clinical quality inventions</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffSubmitInnovation')" style="font-size: 11px; background: #0284c7; border-color: #0284c7;">
+                        <i class="fa-solid fa-lightbulb me-1"></i> Submit Innovation Work
+                    </button>
+                </div>
+                <div style="padding: 12px 0;">
+                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #f8fafc; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                            <div>
+                                <span style="font-family: monospace; font-weight: 700; color: var(--accent);">INN-2026-004</span> · 
+                                <strong style="font-size: 13px; color: var(--text);">Automated Viral Load SMS Escalation Alert for Lost-to-Follow-up Patients</strong>
+                            </div>
+                            <span class="pill pill-closed" style="font-size: 10px; font-weight: 700;">HOD Graded: 44 / 50 Marks</span>
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-dim); line-height: 1.5; margin: 4px 0 8px;">
+                            Developed an automated WhatsApp/SMS gateway that prompts case managers whenever a pediatric patient misses their scheduled viral load appointment by more than 48 hours, reducing drop-out by 28%.
+                        </p>
+                        <div style="font-size: 11px; color: var(--text-muted); display: flex; gap: 16px;">
+                            <span>HOD Remarks: <em>"Outstanding initiative, currently adopting across all Cluster A clinics."</em> — Dr. Amaka Okonkwo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D. Performance Scorecard (Monthly, Quarterly, Annual) -->
+        <div id="staffPdpSubScorecard" class="pdp-sub-content" style="display: none;">
+            <div class="card" style="margin-bottom: 0;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="card-title" style="font-size: 13px; font-weight: 700;">Performance Standing &amp; Scorecard (Monthly, Quarterly &amp; Annual Drill-down)</div>
+                    <span class="pill pill-closed" style="font-size: 11px; font-weight: 800;">Cumulative Score: 124 / 150 (Tier 1 High Performer)</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 10px 0;">
+                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Monthly Behavioral Grade</div>
+                        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #059669; margin: 4px 0;">36 / 40 Pts</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Supervisor Average (Jan–Feb 2026): <strong>90%</strong> across 8 behavioral competencies.</div>
+                    </div>
+                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Quarterly Objectives (Q1)</div>
+                        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); margin: 4px 0;">44 / 60 Pts</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Verified Deliverables on Objectives 1 &amp; 2; Objective 3 in review.</div>
+                    </div>
+                    <div style="border: 1px solid var(--border); border-radius: 8px; padding: 14px; background: #ffffff;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Annual Innovation Standing</div>
+                        <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #0284c7; margin: 4px 0;">44 / 50 Pts</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">HOD Approved &amp; Instituted under Cluster Best Practices.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3E. Supervisor Perspective: Approve PDP & Grade Behavioral Performance -->
+        <div id="staffPdpSubSupervisor" class="pdp-sub-content" style="display: none;">
+            <div class="card" style="margin-bottom: 0; border: 1px solid #f0abfc; background: #fdf4ff;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="card-title" style="font-size: 14px; font-weight: 800; color: #86198f;">
+                            <i class="fa-solid fa-user-check me-2"></i> Supervisor Command Console: Review Supervisees &amp; Grade Monthly Behaviors
+                        </div>
+                        <div style="font-size: 11px; color: #a21caf;">Viewing supervisees assigned under Dr. Ngozi Adeyemi (Lead Supervisor · Lagos State)</div>
+                    </div>
+                </div>
+
+                <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-top: 10px; border: 1px solid #f5d0fe;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 8px;">Supervisees PDP Approval &amp; Monthly Grading Roster</div>
+                    <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                                <th style="width: 25%; padding: 8px; text-align: left; font-size: 11px; color: var(--text-muted);">Supervisee</th>
+                                <th style="width: 20%; padding: 8px; text-align: left; font-size: 11px; color: var(--text-muted);">Role &amp; Facility</th>
+                                <th style="width: 15%; padding: 8px; text-align: center; font-size: 11px; color: var(--text-muted);">PDP Status</th>
+                                <th style="width: 15%; padding: 8px; text-align: center; font-size: 11px; color: var(--text-muted);">Evidence Queue</th>
+                                <th style="width: 15%; padding: 8px; text-align: center; font-size: 11px; color: var(--text-muted);">Behavioral Grade</th>
+                                <th style="width: 10%; padding: 8px; text-align: center; font-size: 11px; color: var(--text-muted);">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 8px; font-weight: 700;">Fatima Bello</td>
+                                <td style="padding: 8px; font-size: 11px;">Sr Tech Officer (Facility A)</td>
+                                <td style="padding: 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Approved</span></td>
+                                <td style="padding: 8px; text-align: center;"><span class="pill pill-progress" style="font-size: 9px;">1 Pending Review</span></td>
+                                <td style="padding: 8px; text-align: center; font-weight: 700; color: #059669;">36 / 40</td>
+                                <td style="padding: 8px; text-align: center;">
+                                    <button class="btn btn-primary btn-sm" onclick="openModalGradeBehavioral('Fatima Bello')" style="font-size: 10px; padding: 2px 6px;">Grade</button>
+                                </td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 8px; font-weight: 700;">Biodun Alade</td>
+                                <td style="padding: 8px; font-size: 11px;">Technical Officer (Facility B)</td>
+                                <td style="padding: 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Approved</span></td>
+                                <td style="padding: 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">All Verified</span></td>
+                                <td style="padding: 8px; text-align: center; font-weight: 700; color: #059669;">34 / 40</td>
+                                <td style="padding: 8px; text-align: center;">
+                                    <button class="btn btn-primary btn-sm" onclick="openModalGradeBehavioral('Biodun Alade')" style="font-size: 10px; padding: 2px 6px;">Grade</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3F. HOD Perspective: Grade Staff Creativity & Innovation (/50) -->
+        <div id="staffPdpSubHod" class="pdp-sub-content" style="display: none;">
+            <div class="card" style="margin-bottom: 0; border: 1px solid #bae6fd; background: #f0f9ff;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="card-title" style="font-size: 14px; font-weight: 800; color: #0369a1;">
+                            <i class="fa-solid fa-medal me-2"></i> Head of Department (HOD) Innovation Evaluation Bench
+                        </div>
+                        <div style="font-size: 11px; color: #0284c7;">Direct grading of departmental creative initiatives &amp; process patents (/50 Marks)</div>
+                    </div>
+                </div>
+
+                <div style="background: #ffffff; border-radius: 8px; padding: 14px; margin-top: 10px; border: 1px solid #e0f2fe;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 12px;">Submitted Staff Innovation Work (Department of Clinical Services)</span>
+                        <span class="pill" style="font-size: 9px; background: #e0f2fe; color: #0284c7;">HOD Exclusive Authority</span>
+                    </div>
+                    <div style="border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="font-size: 12px; color: var(--text);">Fatima Bello — Automated Viral Load SMS Escalation Alert</strong>
+                                <div style="font-size: 11px; color: var(--text-muted);">Impact: 28% reduction in pediatric lost-to-follow-up across 12 facilities.</div>
+                            </div>
+                            <button class="btn btn-outline btn-sm" onclick="alert('HOD Score: 44/50 verified and signed off by Dr. Amaka Okonkwo.')" style="font-size: 11px; color: #0284c7;">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Update Grade
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 4: TRAINING (COMPLIANCE ACADEMY)
+         • Get email notification for new training
+         • Attend training, log attendance
+         • View all training he/she has attended and completed
+         • State Team Lead (STL): View State performance & list of staff yet to complete
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionTraining" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-graduation-cap text-primary"></i> Compliance Academy &amp; Certification Registry
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        Attend online/classroom trainings, log verified attendance, and download institutional certificates
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modalAttendLogTraining')" style="font-size: 11px;">
+                        <i class="fa-solid fa-pen-nib me-1"></i> Attend &amp; Log Attendance
+                    </button>
+                </div>
+            </div>
+
+            <!-- Training Summary & State Team Lead Console -->
+            <div id="stlTrainingConsole" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; margin-top: 10px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 12px; font-weight: 800; color: #1e40af;">
+                        <i class="fa-solid fa-users-viewfinder me-1"></i> State Team Lead (STL) Performance Console — Lagos State Office
+                    </div>
+                    <span class="pill pill-closed" style="font-size: 9px; font-weight: 700;">86% Trained (82 / 95 Personnel)</span>
+                </div>
+                <div style="font-size: 11px; color: #1e3a8a; margin-bottom: 8px;">
+                    Personnel with outstanding mandatory certifications in Lagos State:
+                </div>
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; background: #ffffff; border-radius: 6px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 25%; padding: 6px 8px; text-align: left;">Staff Name</th>
+                            <th style="width: 20%; padding: 6px 8px; text-align: left;">Department</th>
+                            <th style="width: 20%; padding: 6px 8px; text-align: left;">Facility / Station</th>
+                            <th style="width: 25%; padding: 6px 8px; text-align: left;">Missing Mandatory Course</th>
+                            <th style="width: 10%; padding: 6px 8px; text-align: center;">Escalation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 6px 8px; font-weight: 700;">Aisha Musa</td>
+                            <td style="padding: 6px 8px;">Finance</td>
+                            <td style="padding: 6px 8px;">Lagos HQ</td>
+                            <td style="padding: 6px 8px; color: #dc2626; font-weight: 600;">TR-03 Data Protection</td>
+                            <td style="padding: 6px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="alert('Email reminder dispatched to Aisha Musa')" style="font-size: 9px; padding: 1px 4px;">Remind</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 6px 8px; font-weight: 700;">Tunde Balogun</td>
+                            <td style="padding: 6px 8px;">Operations</td>
+                            <td style="padding: 6px 8px;">Badagry Clinic</td>
+                            <td style="padding: 6px 8px; color: #dc2626; font-weight: 600;">TR-02 PSEA Standards</td>
+                            <td style="padding: 6px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="alert('Email reminder dispatched to Tunde Balogun')" style="font-size: 9px; padding: 1px 4px;">Remind</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Staff Personal Attended & Completed Trainings List -->
+            <div style="font-size: 12px; font-weight: 700; color: var(--text); margin: 8px 0 6px;">My Attended &amp; Completed Certification Ledger</div>
+            <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border);">
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 12%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Module Code</th>
+                            <th style="width: 38%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Course Title</th>
+                            <th style="width: 14%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Date Attended</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Score</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Status</th>
+                            <th style="width: 12%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Certificate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">TR-01</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Anti-Fraud, Bribery &amp; Ethics Standards</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted);">14 Jan 2026</td>
+                            <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #059669;">96%</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Certified</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="alert('Downloading TR-01 Certificate (PDF)')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-download me-1"></i> PDF</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">TR-03</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Clinical Data Privacy &amp; Confidentiality</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted);">02 Feb 2026</td>
+                            <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #059669;">92%</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Certified</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="alert('Downloading TR-03 Certificate (PDF)')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-download me-1"></i> PDF</button></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">TR-02</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">PSEA &amp; Safeguarding Guidelines (2026 Refresher)</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px; color: #d97706;">Pending Completion</td>
+                            <td style="padding: 10px 8px; text-align: center; font-weight: 700;">--</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-progress" style="font-size: 9px;">In Progress</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-primary btn-sm" onclick="openModal('modalAttendLogTraining')" style="padding: 2px 6px; font-size: 10px; background: #d97706; border-color: #d97706;"><i class="fa-solid fa-play me-1"></i> Finish</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 5: STATE & CLUSTERS (VIEW ACCESS ONLY FOR STL & CLUSTER LEAD)
+         • View Access for Only STL and Cluster Lead
+         • Submit field update form
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionStates" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-building-flag"></i> State Regional Office &amp; Cluster Command (STL Access)
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        Restricted View: State Team Leads (STL) and Cluster Leads only · Field operations &amp; audit monitoring
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openModal('modalSubmitFieldUpdate')" style="font-size: 11px;">
+                    <i class="fa-solid fa-file-pen me-1"></i> Submit Field Update Form
+                </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 12px 0;">
+                <div class="card" style="margin-bottom: 0; border-top: 3px solid #059669;">
+                    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--text);">Lagos Cluster A</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin: 2px 0 8px;">Lead: Dr. Ngozi Adeyemi · 95 Personnel</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                        <span>State Compliance Score</span>
+                        <strong style="color: #059669;">78%</strong>
+                    </div>
+                    <div style="display: flex; gap: 6px; font-size: 10px; margin-top: 6px;">
+                        <span class="pill pill-progress">2 Complaints</span>
+                        <span class="pill pill-closed">1 Active CAP</span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0; border-top: 3px solid #dc2626; background: #fff5f5;">
+                    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: #991b1b;">Kano Cluster B</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin: 2px 0 8px;">Lead: Musa Ibrahim · 82 Personnel</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                        <span>State Compliance Score</span>
+                        <strong style="color: #dc2626;">62% (Audit Alert)</strong>
+                    </div>
+                    <div style="display: flex; gap: 6px; font-size: 10px; margin-top: 6px;">
+                        <span class="pill pill-open">3 Complaints</span>
+                        <span class="pill pill-open">2 Active CAPs</span>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom: 0; border-top: 3px solid #0284c7;">
+                    <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--text);">Rivers Cluster C</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin: 2px 0 8px;">Lead: Chidi Okafor · 74 Personnel</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                        <span>State Compliance Score</span>
+                        <strong style="color: #0284c7;">81%</strong>
+                    </div>
+                    <div style="display: flex; gap: 6px; font-size: 10px; margin-top: 6px;">
+                        <span class="pill pill-closed">1 Complaint</span>
+                        <span class="pill pill-closed">1 Active CAP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 6: POLICY MANAGEMENT
+         • View and read policy
+         • Acknowledge (digital sign-off)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionPolicies" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-file-contract text-primary"></i> Policy Repository &amp; Digital Acknowledgments
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        Read organizational policies and submit legally binding digital compliance acknowledgments
+                    </div>
+                </div>
+            </div>
+
+            <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 12%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Code</th>
+                            <th style="width: 36%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Policy Title &amp; Scope</th>
+                            <th style="width: 10%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Version</th>
+                            <th style="width: 14%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Read Policy</th>
+                            <th style="width: 14%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Sign-off Status</th>
+                            <th style="width: 14%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">POL-PSEA-001</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Prevention of Sexual Exploitation &amp; Abuse (PSEA)</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">v2.1</td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModalReadPolicy('POL-PSEA-001', 'PSEA & Safeguarding Standards')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-book-open me-1"></i> Read</button></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>Acknowledged</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span style="font-size: 10px; color: var(--text-muted);">Signed 15 Jan 2026</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">POL-TRV-03</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Travel, Subsistence &amp; Flight Escrow Gate Protocol</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">v1.5</td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModalReadPolicy('POL-TRV-03', 'Travel & Flight Escrow Protocol')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-book-open me-1"></i> Read</button></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>Acknowledged</span></td>
+                            <td style="padding: 10px 8px; text-align: center;"><span style="font-size: 10px; color: var(--text-muted);">Signed 20 Jan 2026</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">POL-SEC-007</td>
+                            <td style="padding: 10px 8px; font-weight: 600;">Field Physical Security &amp; Kidnap Incident Response</td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">v1.0</td>
+                            <td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModalReadPolicy('POL-SEC-007', 'Field Security Protocol')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-book-open me-1"></i> Read</button></td>
+                            <td style="padding: 10px 8px; text-align: center;" id="statusPolSec007"><span class="pill pill-open" style="font-size: 9px; font-weight: 700;">Sign-off Due</span></td>
+                            <td style="padding: 10px 8px; text-align: center;" id="actionPolSec007">
+                                <button class="btn btn-primary btn-sm" onclick="handleAcknowledgePolicy('POL-SEC-007')" style="font-size: 10px; padding: 3px 8px;">
+                                    <i class="fa-solid fa-signature me-1"></i> Acknowledge
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 7: LESSONS LEARNED
+         • All Staff: View access only
+         • Supervisors / HOD: Add new lessons
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionLessons" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-book-bookmark text-primary"></i> Institutional Lessons Learned &amp; Case Retrospectives
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        Staff View Only repository of operational improvements and audited root cause analyses
+                    </div>
+                </div>
+                <div id="supervisorAddLessonWrapper" style="display: none;">
+                    <button class="btn btn-primary btn-sm" onclick="openModal('modalStaffAddLesson')" style="font-size: 11px; background: #c026d3; border-color: #c026d3;">
+                        <i class="fa-solid fa-plus me-1"></i> + Add New Lesson Learned (Supervisor/HOD)
+                    </button>
+                </div>
+            </div>
+
+            <div style="width: 100%; overflow: hidden; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;">
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                        <tr style="background: var(--surface2); border-bottom: 1px solid var(--border);">
+                            <th style="width: 10%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Lesson Ref</th>
+                            <th style="width: 14%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Source Domain</th>
+                            <th style="width: 44%; padding: 10px 8px; text-align: left; font-size: 11px; color: var(--text-muted); font-weight: 700;">Key Lesson &amp; Preventative Recommendation</th>
+                            <th style="width: 16%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Category</th>
+                            <th style="width: 16%; padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted); font-weight: 700;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="staffLessonsTableBody">
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">LES-015</td>
+                            <td style="padding: 10px 8px; font-size: 11px;">CAP-012 (Procurement)</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 700; color: var(--text);">Direct Physical Batch Sample Verification Before Payment</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Prevent vendor delivery disputes by requiring counter-signed physical inspection slips.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">Supply Chain</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Published</span></td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">LES-012</td>
+                            <td style="padding: 10px 8px; font-size: 11px;">TRV-038 (Travel)</td>
+                            <td style="padding: 10px 8px;">
+                                <div style="font-weight: 700; color: var(--text);">Mandatory 72-Hour Flight Boarding Pass Direct Upload</div>
+                                <div style="font-size: 10px; color: var(--text-muted);">Eliminate outstanding vendor disputes by tying airline payment release to traveler boarding pass uploads.</div>
+                            </td>
+                            <td style="padding: 10px 8px; text-align: center; font-size: 11px;">Operations Escrow</td>
+                            <td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">Published</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         MODULE 8: AI ASSISTANCE (STAFF HELPDESK ONLY)
+         • Access only Staff Helpdesk
+         ══════════════════════════════════════════════════════════════════ -->
+    <div id="staffSectionAi" class="staff-module-section" style="display: none;">
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div class="card-title" style="font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-robot text-primary"></i> ComplianceIQ AI Staff Helpdesk
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                        Immediate guidance on CCCRN policies, PSEA reporting channels, leave entitlement calculation, and travel rules
+                    </div>
+                </div>
+                <span class="pill" style="background: #e0f2fe; color: #0284c7; font-size: 10px; font-weight: 800;">Staff Helpdesk Mode</span>
+            </div>
+
+            <!-- Suggested Prompt Chips -->
+            <div style="display: flex; gap: 6px; padding: 10px 0; flex-wrap: wrap;">
+                <button class="btn btn-outline btn-sm" onclick="askAiHelpdesk('What are the reporting channels under PSEA policy POL-001?')" style="font-size: 11px; border-radius: 20px;">
+                    🛡️ PSEA Reporting Channels?
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="askAiHelpdesk('How does the POL-TRV-03 boarding pass escrow work?')" style="font-size: 11px; border-radius: 20px;">
+                    ✈️ Travel Boarding Pass Escrow Rule?
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="askAiHelpdesk('What is the deadline for submitting Q1 PDP evidence?')" style="font-size: 11px; border-radius: 20px;">
+                    🎯 PDP Evidence Submission Deadline?
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="askAiHelpdesk('Can I submit a grievance 100% anonymously?')" style="font-size: 11px; border-radius: 20px;">
+                    🔒 Anonymous Grievance Submission?
+                </button>
+            </div>
+
+            <!-- Chat Window -->
+            <div id="staffAiChatWindow" style="height: 320px; overflow-y: auto; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="align-self: flex-start; max-width: 80%; background: #ffffff; border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; font-size: 12px; line-height: 1.5; color: var(--text);">
+                    <div style="font-weight: 700; color: var(--accent); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-robot"></i> ComplianceIQ Staff Assistant
+                    </div>
+                    Hello Fatima! I am your ComplianceIQ Staff Helpdesk Assistant. Ask me any question regarding CCCRN policies, your PDP requirements, travel guidelines, or reporting ethical concerns.
+                </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <input type="text" id="staffAiInput" placeholder="Ask a question about policies, leave, travel, or reporting..." onkeypress="if(event.key==='Enter')sendStaffAiQuery()" style="flex: 1; height: 38px; padding: 0 12px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; outline: none;">
+                <button class="btn btn-primary" onclick="sendStaffAiQuery()" style="height: 38px; padding: 0 16px; font-size: 12px;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Ask
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     MODALS
+     ══════════════════════════════════════════════════════════════════ -->
+
+<!-- Modal: Apply for Personal Leave -->
+<div class="modal-overlay" id="modalStaffApplyLeave" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffApplyLeave')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #0077b6;">
+                <i class="fa-solid fa-calendar-plus me-2"></i> Apply for Personal Leave
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffApplyLeave')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffApplyLeave(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Leave Category</label>
+                    <select id="staffLeaveCategory" required style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option value="Annual">Annual Leave (14 Days Available)</option>
+                        <option value="Casual">Casual Leave (4 Days Available)</option>
+                        <option value="Sick">Sick Leave (10 Days Available)</option>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; font-weight: 700; margin-bottom: 4px;">Start Date</label>
+                        <input type="date" id="staffLeaveStartDate" required style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: 700; margin-bottom: 4px;">End Date</label>
+                        <input type="date" id="staffLeaveEndDate" required style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Designated Relieving Colleague</label>
+                    <input type="text" id="staffLeaveReliever" required placeholder="Name of relieving officer during absence..." style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Handover Notes &amp; Justification</label>
+                    <textarea id="staffLeaveHandover" rows="3" required placeholder="Describe task handover arrangements and supervisor contact..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffApplyLeave')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="background: #0077b6; border-color: #0077b6;"><i class="fa-solid fa-paper-plane me-1"></i> Submit to Supervisor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Log Complaint -->
+<div class="modal-overlay" id="modalStaffLogComplaint" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffLogComplaint')">
+    <div class="modal-dialog" style="max-width: 520px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #dc2626;">
+                <i class="fa-solid fa-inbox me-2"></i> Log New Complaint / Grievance
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffLogComplaint')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSubmitComplaint(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Reporting Identity Mode</label>
+                    <select id="staffComplaintMode" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option value="Named">Named Submission (Protected Employee Record)</option>
+                        <option value="Anonymous">100% Anonymous (Metadata Scrubbed)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Incident Category</label>
+                    <select id="staffComplaintCategory" required style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option>Procurement Defect</option>
+                        <option>PSEA &amp; Safeguarding</option>
+                        <option>Financial Mismanagement</option>
+                        <option>Workplace Harassment / Abuse</option>
+                        <option>Safety / Security Violation</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Incident Title &amp; Details</label>
+                    <input type="text" id="staffComplaintTitle" required placeholder="Concise summary of grievance..." style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; margin-bottom: 8px;">
+                    <textarea id="staffComplaintDetails" rows="3" required placeholder="Describe dates, location, persons involved, and specific impact..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffLogComplaint')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="background: #dc2626; border-color: #dc2626;"><i class="fa-solid fa-lock me-1"></i> Submit to DoC</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: View Linked CAP -->
+<div class="modal-overlay" id="modalViewLinkedCap" style="display: none;" onclick="if(event.target===this)closeModal('modalViewLinkedCap')">
+    <div class="modal-dialog" style="max-width: 520px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="modal-title" id="linkedCapModalTitle" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">CAP Details</span>
+                <span id="linkedCapModalStatus" class="pill pill-progress">In Progress</span>
+            </div>
+            <button class="modal-close" onclick="closeModal('modalViewLinkedCap')">&times;</button>
+        </div>
+        <div class="modal-body" style="font-size: 12px;" id="linkedCapModalBody"></div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary btn-sm" onclick="closeModal('modalViewLinkedCap')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Submit State Evidence under CAP -->
+<div class="modal-overlay" id="modalSubmitStateEvidence" style="display: none;" onclick="if(event.target===this)closeModal('modalSubmitStateEvidence')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">
+                <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i> Submit State Verification Evidence
+            </span>
+            <button class="modal-close" onclick="closeModal('modalSubmitStateEvidence')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSubmitStateEvidence(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Target CAP</label>
+                    <select id="stateEvidenceCapRef" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option value="CAP-2026-012">CAP-2026-012: Facility PPE Supply Chain Rectification (Lagos)</option>
+                        <option value="CAP-2026-009">CAP-2026-009: EMR Backlog Clearance (Lagos Outreach)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Attach State Verification Evidence (PDF, Excel, Photo)</label>
+                    <input type="file" id="stateEvidenceFile" required style="width: 100%; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">State Office / Facility Verification Notes</label>
+                    <textarea id="stateEvidenceNotes" rows="3" required placeholder="Describe audit checks completed at site level..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalSubmitStateEvidence')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i> Submit State Evidence</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Set New Objective (PDP) -->
+<div class="modal-overlay" id="modalStaffSetObjective" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffSetObjective')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">
+                <i class="fa-solid fa-bullseye text-primary me-2"></i> Set New Performance Objective
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffSetObjective')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSetObjective(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Objective Statement</label>
+                    <input type="text" id="staffNewObjStatement" required placeholder="e.g. Conduct monthly PMTCT cascade audits..." style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Target Measurable Output</label>
+                    <input type="text" id="staffNewObjOutput" required placeholder="e.g. Monthly PMTCT retention register signed by MO" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Target Weight (Points)</label>
+                    <input type="number" id="staffNewObjWeight" required value="15" min="5" max="25" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffSetObjective')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i> Submit to Supervisor</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Submit PDP Evidence -->
+<div class="modal-overlay" id="modalStaffSubmitPdpEvidence" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffSubmitPdpEvidence')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">
+                <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i> Submit Objective Deliverable Evidence
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffSubmitPdpEvidence')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSubmitPdpEvidence(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Target Objective</label>
+                    <select id="staffPdpObjSelect" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option value="OBJ-01">OBJ-01: Pediatric ART Viral Suppression</option>
+                        <option value="OBJ-02">OBJ-02: Clinical Mentorship Audits</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Evidence File (PDF/Excel)</label>
+                    <input type="file" id="staffPdpEvidenceFile" required style="width: 100%; font-size: 12px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffSubmitPdpEvidence')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i> Upload Evidence</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Submit Innovation -->
+<div class="modal-overlay" id="modalStaffSubmitInnovation" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffSubmitInnovation')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #0284c7;">
+                <i class="fa-solid fa-lightbulb me-2"></i> Submit Creative / Innovation Work
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffSubmitInnovation')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSubmitInnovation(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Innovation Title</label>
+                    <input type="text" id="staffInnTitle" required placeholder="e.g. Mobile EMR synchronization tool..." style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Methodology &amp; Institutional Benefit</label>
+                    <textarea id="staffInnDesc" rows="3" required placeholder="Explain how this initiative enhances efficiency or clinical quality..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffSubmitInnovation')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="background: #0284c7; border-color: #0284c7;"><i class="fa-solid fa-paper-plane me-1"></i> Route to HOD</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Attend & Log Training -->
+<div class="modal-overlay" id="modalAttendLogTraining" style="display: none;" onclick="if(event.target===this)closeModal('modalAttendLogTraining')">
+    <div class="modal-dialog" style="max-width: 480px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">
+                <i class="fa-solid fa-graduation-cap text-primary me-2"></i> Log Training Attendance
+            </span>
+            <button class="modal-close" onclick="closeModal('modalAttendLogTraining')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffLogTrainingAttendance(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Course Selection</label>
+                    <select id="staffTrainingCourseSelect" style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        <option value="TR-02">TR-02: PSEA &amp; Safeguarding Standards (2026)</option>
+                        <option value="TR-04">TR-04: USAID 2 CFR 200 Procurement Ethics</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Session Date &amp; Delivery Method</label>
+                    <input type="text" value="Today (Attendify Integrated Webcast)" readonly style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: #f8fafc;">
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalAttendLogTraining')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-check me-1"></i> Confirm &amp; Complete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Submit Field Update (STL Only) -->
+<div class="modal-overlay" id="modalSubmitFieldUpdate" style="display: none;" onclick="if(event.target===this)closeModal('modalSubmitFieldUpdate')">
+    <div class="modal-dialog" style="max-width: 500px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">
+                <i class="fa-solid fa-file-pen text-primary me-2"></i> Submit State Field Update
+            </span>
+            <button class="modal-close" onclick="closeModal('modalSubmitFieldUpdate')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffSubmitFieldUpdate(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">State Office / Cluster</label>
+                    <input type="text" value="Lagos State Office (Cluster A)" readonly style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: #f8fafc;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Weekly Field Compliance Standing &amp; Bottlenecks</label>
+                    <textarea id="staffFieldNotes" rows="4" required placeholder="Outline facility mentoring visits, commodity security, and any emerging compliance bottlenecks..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalSubmitFieldUpdate')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-paper-plane me-1"></i> Transmit Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Read Policy -->
+<div class="modal-overlay" id="modalReadPolicy" style="display: none;" onclick="if(event.target===this)closeModal('modalReadPolicy')">
+    <div class="modal-dialog" style="max-width: 580px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" id="readPolicyTitle" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px;">Read Policy Document</span>
+            <button class="modal-close" onclick="closeModal('modalReadPolicy')">&times;</button>
+        </div>
+        <div class="modal-body" style="font-size: 12px;" id="readPolicyBody"></div>
+        <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary btn-sm" onclick="closeModal('modalReadPolicy')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Lesson Learned (Supervisor/HOD) -->
+<div class="modal-overlay" id="modalStaffAddLesson" style="display: none;" onclick="if(event.target===this)closeModal('modalStaffAddLesson')">
+    <div class="modal-dialog" style="max-width: 500px; width: 95%;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 15px; color: #c026d3;">
+                <i class="fa-solid fa-book-bookmark me-2"></i> Document New Lesson Learned
+            </span>
+            <button class="modal-close" onclick="closeModal('modalStaffAddLesson')">&times;</button>
+        </div>
+        <form onsubmit="handleStaffAddLesson(event)">
+            <div class="modal-body" style="font-size: 12px;">
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Lesson Title</label>
+                    <input type="text" id="staffLessonTitle" required placeholder="e.g. Field Sample Transport Reconciliation..." style="width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px;">Root Cause &amp; Preventative Recommendation</label>
+                    <textarea id="staffLessonBody" rows="3" required placeholder="Explain what occurred and institutional safeguards instituted..." style="width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeModal('modalStaffAddLesson')">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="background: #c026d3; border-color: #c026d3;"><i class="fa-solid fa-plus me-1"></i> Publish Lesson</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// CCCRN COMPLIANCEIQ — LOCALSTORAGE REACTIVE DATA ENGINE
+// ══════════════════════════════════════════════════════════════════
+
+var CCCRN_STORE = {
+    KEYS: {
+        ATTENDANCE: 'CCCRN_STAFF_ATTENDANCE_V1',
+        LEAVE_BALANCES: 'CCCRN_STAFF_LEAVE_BALANCES_V1',
+        LEAVE_REQUESTS: 'CCCRN_STAFF_LEAVE_REQUESTS_V1',
+        COMPLAINTS: 'CCCRN_STAFF_COMPLAINTS_V1',
+        CAPS: 'CCCRN_STAFF_CAPS_V1',
+        PDP_OBJECTIVES: 'CCCRN_STAFF_PDP_OBJECTIVES_V1',
+        PDP_INNOVATIONS: 'CCCRN_STAFF_PDP_INNOVATIONS_V1',
+        TRAININGS: 'CCCRN_STAFF_TRAININGS_V1',
+        POLICIES: 'CCCRN_STAFF_POLICIES_V1',
+        LESSONS: 'CCCRN_STAFF_LESSONS_V1'
+    },
+
+    get: function(key, defaultVal) {
+        try {
+            var data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultVal;
+        } catch (e) {
+            console.error('LocalStorage get error', e);
+            return defaultVal;
+        }
+    },
+
+    set: function(key, val) {
+        try {
+            localStorage.setItem(key, JSON.stringify(val));
+        } catch (e) {
+            console.error('LocalStorage set error', e);
+        }
+    },
+
+    initDefaults: function() {
+        if (!localStorage.getItem(this.KEYS.ATTENDANCE)) {
+            this.set(this.KEYS.ATTENDANCE, {
+                clockedIn: true,
+                time: '07:48 AM',
+                terminal: 'BIO-LOS-01',
+                rate: '98.4%'
+            });
+        }
+        if (!localStorage.getItem(this.KEYS.LEAVE_BALANCES)) {
+            this.set(this.KEYS.LEAVE_BALANCES, {
+                annual: 14, maxAnnual: 21,
+                casual: 4, maxCasual: 7,
+                sick: 10, maxSick: 12
+            });
+        }
+        if (!localStorage.getItem(this.KEYS.LEAVE_REQUESTS)) {
+            this.set(this.KEYS.LEAVE_REQUESTS, [
+                { id: 'LVE-2026-038', category: 'Annual', start: '10 Jan 2026', end: '15 Jan 2026', days: 5, reliever: 'Biodun Alade', status: 'Approved' }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.COMPLAINTS)) {
+            this.set(this.KEYS.COMPLAINTS, [
+                { id: 'CMP-2026-049', date: '24 Feb 2026', category: 'Procurement Defect', title: 'Facility PPE Consumables Shortage & Substandard Batches', mode: 'Named', severity: 'High', status: 'Under Investigation', linkedCap: 'CAP-2026-012' },
+                { id: 'CMP-2026-033', date: '15 Jan 2026', category: 'Workplace Safety', title: 'Inadequate Field Outreach Security Escort', mode: 'Anonymous', severity: 'Medium', status: 'Resolved & Closed', linkedCap: 'CAP-2026-008' }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.CAPS)) {
+            this.set(this.KEYS.CAPS, [
+                { id: 'CAP-2026-012', state: 'Lagos (Facility Hub A)', category: 'Procurement & Supplies', title: 'Facility PPE Supply Chain Rectification', targetDate: '20 Mar 2026', status: 'In Progress', hasEvidence: false },
+                { id: 'CAP-2026-009', state: 'Lagos (Outreach Unit)', category: 'Data Quality & Records', title: 'Monthly EMR Backlog Clearance', targetDate: '28 Feb 2026', status: 'Evidence Verified', hasEvidence: true, fileName: 'EMR_Audit_Lagos_Feb2026.pdf' }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.PDP_OBJECTIVES)) {
+            this.set(this.KEYS.PDP_OBJECTIVES, [
+                { id: 'OBJ-2026-01', statement: 'Pediatric ART Viral Suppression & Retention', output: 'Monthly VL Register & Cohort Analysis', weight: 15, status: 'Approved by Supervisor', evidenceFile: 'VL_Suppression_Q1.xlsx', evidenceScore: 15 },
+                { id: 'OBJ-2026-02', statement: 'Clinical Mentorship & Quality Improvement Audits', output: 'Mentorship Logsheets & QI Action Plans', weight: 15, status: 'Approved by Supervisor', evidenceFile: 'Site_Mentorship_Logs.pdf', evidenceScore: null }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.PDP_INNOVATIONS)) {
+            this.set(this.KEYS.PDP_INNOVATIONS, [
+                { id: 'INN-2026-004', title: 'Automated Viral Load SMS Escalation Alert for Lost-to-Follow-up Patients', desc: 'Automated WhatsApp/SMS gateway that prompts case managers whenever a pediatric patient misses their scheduled viral load appointment by more than 48 hours.', score: '44 / 50 Marks', status: 'Graded by HOD', author: 'Fatima Bello' }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.TRAININGS)) {
+            this.set(this.KEYS.TRAININGS, [
+                { code: 'TR-01', title: 'Anti-Fraud, Bribery & Ethics Standards', date: '14 Jan 2026', score: '96%', status: 'Certified' },
+                { code: 'TR-03', title: 'Clinical Data Privacy & Confidentiality', date: '02 Feb 2026', score: '92%', status: 'Certified' },
+                { code: 'TR-02', title: 'PSEA & Safeguarding Guidelines (2026 Refresher)', date: null, score: null, status: 'In Progress' }
+            ]);
+        }
+        if (!localStorage.getItem(this.KEYS.POLICIES)) {
+            this.set(this.KEYS.POLICIES, {
+                'POL-PSEA-001': { signed: true, date: '15 Jan 2026' },
+                'POL-TRV-03': { signed: true, date: '20 Jan 2026' },
+                'POL-SEC-007': { signed: false, date: null }
+            });
+        }
+        if (!localStorage.getItem(this.KEYS.LESSONS)) {
+            this.set(this.KEYS.LESSONS, [
+                { id: 'LES-015', domain: 'CAP-012 (Procurement)', title: 'Direct Physical Batch Sample Verification Before Payment', category: 'Supply Chain', status: 'Published' },
+                { id: 'LES-012', domain: 'TRV-038 (Travel)', title: 'Mandatory 72-Hour Flight Boarding Pass Direct Upload', category: 'Operations Escrow', status: 'Published' }
+            ]);
+        }
+    },
+
+    reset: function() {
+        if (confirm('Reset all CCCRN Compliance test data in LocalStorage back to initial demo state?')) {
+            Object.values(this.KEYS).forEach(function(k) { localStorage.removeItem(k); });
+            this.initDefaults();
+            renderAllFromStorage();
+            alert('LocalStorage test data refreshed successfully!');
+        }
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// RENDERERS (SYNC UI FROM LOCALSTORAGE)
+// ══════════════════════════════════════════════════════════════════
+
+function renderAttendanceFromStorage() {
+    var att = CCCRN_STORE.get(CCCRN_STORE.KEYS.ATTENDANCE, { clockedIn: true, time: '07:48 AM', terminal: 'BIO-LOS-01' });
+    var pill = document.getElementById('staffClockStatusPill');
+    var btn = document.getElementById('btnStaffClockToggle');
+    if (pill && btn) {
+        if (att.clockedIn) {
+            pill.className = 'pill pill-closed';
+            pill.innerText = 'Clocked In · ' + att.time;
+            btn.innerHTML = '<i class="fa-solid fa-clock me-1"></i> Clock-Out for the Day';
+        } else {
+            pill.className = 'pill pill-progress';
+            pill.innerText = 'Clocked Out · Duty Ended';
+            btn.innerHTML = '<i class="fa-solid fa-clock me-1"></i> Clock-In for Duty';
+        }
+    }
+}
+
+function renderLeaveFromStorage() {
+    var bal = CCCRN_STORE.get(CCCRN_STORE.KEYS.LEAVE_BALANCES, { annual: 14, casual: 4, sick: 10 });
+    var reqs = CCCRN_STORE.get(CCCRN_STORE.KEYS.LEAVE_REQUESTS, []);
+    
+    var tbody = document.getElementById('staffLeaveHistoryTableBody');
+    if (tbody) {
+        var html = '';
+        reqs.forEach(function(r) {
+            var isPending = r.status && r.status.includes('Pending');
+            var statClass = isPending ? 'pill-progress' : (r.status === 'Approved' ? 'pill-closed' : 'pill-open');
+            var catBadge = r.category && r.category.includes('Annual')
+                ? '<span style="background: #e0f2fe; color: #02367B; padding: 2px 7px; border-radius: 4px; font-weight: 600;">' + r.category + '</span>'
+                : '<span style="background: #fef3c7; color: #d97706; padding: 2px 7px; border-radius: 4px; font-weight: 600;">' + r.category + '</span>';
+
+            html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+                '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: #0077b6;">' + r.id + '</td>' +
+                '<td style="padding: 10px 8px;">' + catBadge + '</td>' +
+                '<td style="padding: 10px 8px;"><strong>' + (r.start || 'TBD') + '</strong> — <strong>' + (r.end || 'TBD') + '</strong> (' + (r.days || 1) + ' days)</td>' +
+                '<td style="padding: 10px 8px;">' + (r.reliever || 'None') + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center;"><span class="pill ' + statClass + '">' + r.status + '</span></td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+}
+
+function renderComplaintsFromStorage() {
+    var list = CCCRN_STORE.get(CCCRN_STORE.KEYS.COMPLAINTS, []);
+    var tbody = document.getElementById('staffComplaintsHistoryTable');
+    if (!tbody) return;
+
+    var html = '';
+    list.forEach(function(c) {
+        var sevClass = c.severity === 'Critical' || c.severity === 'High' ? 'pill-open' : 'pill-progress';
+        var statClass = c.status.includes('Closed') || c.status.includes('Resolved') ? 'pill-closed' : 'pill-progress';
+        var capBtn = c.linkedCap
+            ? '<button class="btn btn-outline btn-sm" onclick="viewLinkedCapModal(\'' + c.linkedCap + '\', \'' + c.title.replace(/'/g, "\\'") + '\', \'Lagos Office\', \'' + c.status + '\')" style="padding: 2px 6px; font-size: 10px; color: var(--accent);"><i class="fa-solid fa-eye me-1"></i> ' + c.linkedCap + '</button>'
+            : '<span style="color: var(--text-muted); font-size: 10px;">None</span>';
+
+        html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+            '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">' + c.id + '</td>' +
+            '<td style="padding: 10px 8px; font-size: 11px; color: var(--text-muted);">' + c.date + '</td>' +
+            '<td style="padding: 10px 8px; font-weight: 600;">' + c.category + '</td>' +
+            '<td style="padding: 10px 8px;"><div style="font-weight: 600; color: var(--text);">' + c.title + '</div><div style="font-size: 10px; color: var(--text-muted);">Mode: ' + c.mode + '</div></td>' +
+            '<td style="padding: 10px 8px; text-align: center;"><span class="pill ' + sevClass + '" style="font-size: 9px; font-weight: 700;">' + c.severity + '</span></td>' +
+            '<td style="padding: 10px 8px; text-align: center;"><span class="pill ' + statClass + '" style="font-size: 9px;">' + c.status + '</span></td>' +
+            '<td style="padding: 10px 8px; text-align: center;">' + capBtn + '</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function renderCapFromStorage() {
+    var list = CCCRN_STORE.get(CCCRN_STORE.KEYS.CAPS, []);
+    var tbody = document.getElementById('staffCapTableBody');
+    if (!tbody) return;
+
+    var html = '';
+    list.forEach(function(cap) {
+        var actionBtn = cap.hasEvidence
+            ? '<button class="btn btn-outline btn-sm" onclick="alert(\'Viewing State Evidence: ' + (cap.fileName || 'Verified_Evidence.pdf') + ' (Stored in LocalStorage)\')" style="padding: 3px 6px; font-size: 10px;"><i class="fa-solid fa-eye"></i> View</button>'
+            : '<button class="btn btn-primary btn-sm" onclick="openModalSubmitStateEvidence(\'' + cap.id + '\')" style="font-size: 10px; padding: 3px 8px;"><i class="fa-solid fa-upload me-1"></i> Submit</button>';
+
+        var statPill = cap.hasEvidence ? '<span class="pill pill-closed" style="font-size: 9px;">Evidence Submitted</span>' : '<span class="pill pill-progress" style="font-size: 9px;">' + cap.status + '</span>';
+
+        html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+            '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">' + cap.id + '</td>' +
+            '<td style="padding: 10px 8px; font-size: 11px;">' + cap.state + '</td>' +
+            '<td style="padding: 10px 8px; font-weight: 600;">' + cap.category + '</td>' +
+            '<td style="padding: 10px 8px;"><div style="font-weight: 700; color: var(--text);">' + cap.title + '</div></td>' +
+            '<td style="padding: 10px 8px; text-align: center; font-size: 11px;">' + cap.targetDate + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center;">' + statPill + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center;">' + actionBtn + '</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function renderPdpFromStorage() {
+    var objs = CCCRN_STORE.get(CCCRN_STORE.KEYS.PDP_OBJECTIVES, []);
+    var inns = CCCRN_STORE.get(CCCRN_STORE.KEYS.PDP_INNOVATIONS, []);
+    // Render Objectives Table
+    var tbody = document.querySelector('#staffPdpSubObjectives tbody');
+    if (tbody) {
+        var html = '';
+        objs.forEach(function(o) {
+            html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+                '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">' + o.id + '</td>' +
+                '<td style="padding: 10px 8px;"><div style="font-weight: 700; color: var(--text);">' + o.statement + '</div></td>' +
+                '<td style="padding: 10px 8px; font-size: 11px;">' + o.output + '</td>' +
+                '<td style="padding: 10px 8px; text-align: center; font-weight: 700;">' + o.weight + ' Pts</td>' +
+                '<td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>' + o.status + '</span></td>' +
+                '<td style="padding: 10px 8px; text-align: center;"><button class="btn btn-outline btn-sm" onclick="openModal(\'' + (o.evidenceFile ? 'modalStaffSubmitPdpEvidence' : 'modalStaffSubmitPdpEvidence') + '\')" style="padding: 3px 6px; font-size: 10px;"><i class="fa-solid fa-upload me-1"></i> ' + (o.evidenceFile ? 'Update' : 'Evidence') + '</button></td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+}
+
+function renderTrainingFromStorage() {
+    var list = CCCRN_STORE.get(CCCRN_STORE.KEYS.TRAININGS, []);
+    var tbody = document.querySelector('#staffSectionTraining table tbody');
+    if (!tbody) return;
+
+    var html = '';
+    list.forEach(function(t) {
+        var certBtn = t.status === 'Certified'
+            ? '<button class="btn btn-outline btn-sm" onclick="alert(\'Downloading ' + t.code + ' Certificate (PDF) from LocalStorage record\')" style="padding: 2px 6px; font-size: 10px;"><i class="fa-solid fa-download me-1"></i> PDF</button>'
+            : '<button class="btn btn-primary btn-sm" onclick="openModal(\'' + 'modalAttendLogTraining' + '\')" style="padding: 2px 6px; font-size: 10px; background: #d97706; border-color: #d97706;"><i class="fa-solid fa-play me-1"></i> Finish</button>';
+
+        var statPill = t.status === 'Certified'
+            ? '<span class="pill pill-closed" style="font-size: 9px;">Certified</span>'
+            : '<span class="pill pill-progress" style="font-size: 9px;">In Progress</span>';
+
+        html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+            '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">' + t.code + '</td>' +
+            '<td style="padding: 10px 8px; font-weight: 600;">' + t.title + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center; font-size: 11px; color: var(--text-muted);">' + (t.date || 'Pending') + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #059669;">' + (t.score || '--') + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center;">' + statPill + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center;">' + certBtn + '</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function renderPoliciesFromStorage() {
+    var policies = CCCRN_STORE.get(CCCRN_STORE.KEYS.POLICIES, {});
+    var polSec = policies['POL-SEC-007'];
+    if (polSec && polSec.signed) {
+        var statEl = document.getElementById('statusPolSec007');
+        var actEl = document.getElementById('actionPolSec007');
+        if (statEl) statEl.innerHTML = '<span class="pill pill-closed" style="font-size: 9px;"><i class="fa-solid fa-check me-1"></i>Acknowledged</span>';
+        if (actEl) actEl.innerHTML = '<span style="font-size: 10px; color: var(--text-muted);">Signed ' + polSec.date + '</span>';
+    }
+}
+
+function renderLessonsFromStorage() {
+    var lessons = CCCRN_STORE.get(CCCRN_STORE.KEYS.LESSONS, []);
+    var tbody = document.getElementById('staffLessonsTableBody');
+    if (!tbody) return;
+
+    var html = '';
+    lessons.forEach(function(l) {
+        html += '<tr style="border-bottom: 1px solid #f1f5f9;">' +
+            '<td style="padding: 10px 8px; font-family: monospace; font-weight: 700; color: var(--accent);">' + l.id + '</td>' +
+            '<td style="padding: 10px 8px; font-size: 11px;">' + l.domain + '</td>' +
+            '<td style="padding: 10px 8px;"><div style="font-weight: 700; color: var(--text);">' + l.title + '</div></td>' +
+            '<td style="padding: 10px 8px; text-align: center; font-size: 11px;">' + l.category + '</td>' +
+            '<td style="padding: 10px 8px; text-align: center;"><span class="pill pill-closed" style="font-size: 9px;">' + l.status + '</span></td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function renderAllFromStorage() {
+    renderAttendanceFromStorage();
+    renderLeaveFromStorage();
+    renderComplaintsFromStorage();
+    renderCapFromStorage();
+    renderPdpFromStorage();
+    renderTrainingFromStorage();
+    renderPoliciesFromStorage();
+    renderLessonsFromStorage();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PERSPECTIVE & TAB CONTROLLER
+// ══════════════════════════════════════════════════════════════════
+
+var CURRENT_STAFF_PERSPECTIVE = 'staff';
+
+function switchStaffMainTab(tabKey, btn) {
+    document.querySelectorAll('.staff-module-section').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.staff-main-tab').forEach(function(b) { b.classList.remove('active'); });
+
+    var map = {
+        'leave': 'staffSectionLeave',
+        'complaints': 'staffSectionComplaints',
+        'cap': 'staffSectionCap',
+        'pdp': 'staffSectionPdp',
+        'training': 'staffSectionTraining',
+        'states': 'staffSectionStates',
+        'policies': 'staffSectionPolicies',
+        'lessons': 'staffSectionLessons',
+        'ai': 'staffSectionAi'
+    };
+
+    var targetEl = document.getElementById(map[tabKey] || 'staffSectionComplaints');
+    if (targetEl) targetEl.style.display = 'block';
+    if (btn) btn.classList.add('active');
+}
+
+function switchStaffRolePerspective(role, btn) {
+    CURRENT_STAFF_PERSPECTIVE = role;
+
+    document.querySelectorAll('.btn-staff-role').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = '#ffffff';
+        b.style.border = '1px solid rgba(255,255,255,0.4)';
+    });
+
+    if (btn) {
+        btn.classList.add('active');
+        btn.style.background = '#55E2E9';
+        btn.style.color = '#012454';
+        btn.style.border = 'none';
+    }
+
+    var pill = document.getElementById('currentRoleBadgePill');
+    var tabStates = document.getElementById('tabNavStates');
+    var supWrapper = document.getElementById('supervisorAddLessonWrapper');
+    var supLeave = document.getElementById('supervisorLeaveQueueWrapper');
+    var stlConsole = document.getElementById('stlTrainingConsole');
+
+    if (role === 'staff') {
+        pill.innerText = 'STAFF ROLE';
+        pill.style.background = '#fef08a';
+        pill.style.color = '#854d0e';
+        if (tabStates) tabStates.style.display = 'none';
+        if (supWrapper) supWrapper.style.display = 'none';
+        if (supLeave) supLeave.style.display = 'none';
+        if (stlConsole) stlConsole.style.display = 'none';
+    } else if (role === 'supervisor') {
+        pill.innerText = 'SUPERVISOR ROLE';
+        pill.style.background = '#fdf4ff';
+        pill.style.color = '#86198f';
+        if (tabStates) tabStates.style.display = 'none';
+        if (supWrapper) supWrapper.style.display = 'block';
+        if (supLeave) supLeave.style.display = 'block';
+        if (stlConsole) stlConsole.style.display = 'none';
+        switchStaffMainTab('pdp', document.querySelectorAll('.staff-main-tab')[2]);
+        switchStaffPdpSubTab('supervisor', document.getElementById('btnPdpSupervisorTab'));
+    } else if (role === 'hod') {
+        pill.innerText = 'HOD ROLE';
+        pill.style.background = '#e0f2fe';
+        pill.style.color = '#0369a1';
+        if (tabStates) tabStates.style.display = 'none';
+        if (supWrapper) supWrapper.style.display = 'block';
+        if (supLeave) supLeave.style.display = 'block';
+        if (stlConsole) stlConsole.style.display = 'none';
+        switchStaffMainTab('pdp', document.querySelectorAll('.staff-main-tab')[2]);
+        switchStaffPdpSubTab('hod', document.getElementById('btnPdpHodTab'));
+    } else if (role === 'stl') {
+        pill.innerText = 'STATE TEAM LEAD (STL)';
+        pill.style.background = '#dcfce7';
+        pill.style.color = '#15803d';
+        if (tabStates) tabStates.style.display = 'flex';
+        if (supWrapper) supWrapper.style.display = 'block';
+        if (supLeave) supLeave.style.display = 'none';
+        if (stlConsole) stlConsole.style.display = 'block';
+        switchStaffMainTab('states', tabStates);
+    }
+}
+
+function switchStaffPdpSubTab(key, btn) {
+    document.querySelectorAll('.pdp-sub-content').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.pdp-sub-tab').forEach(function(b) {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline');
+    });
+
+    var map = {
+        'objectives': 'staffPdpSubObjectives',
+        'evidence': 'staffPdpSubEvidence',
+        'innovation': 'staffPdpSubInnovation',
+        'scorecard': 'staffPdpSubScorecard',
+        'supervisor': 'staffPdpSubSupervisor',
+        'hod': 'staffPdpSubHod'
+    };
+
+    var targetEl = document.getElementById(map[key] || 'staffPdpSubObjectives');
+    if (targetEl) targetEl.style.display = 'block';
+    if (btn) {
+        btn.classList.add('active', 'btn-primary');
+        btn.classList.remove('btn-outline');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ACTIONS & MUTATIONS (SAVED TO LOCALSTORAGE)
+// ══════════════════════════════════════════════════════════════════
+
+function toggleStaffClock() {
+    var att = CCCRN_STORE.get(CCCRN_STORE.KEYS.ATTENDANCE, { clockedIn: true, time: '07:48 AM', terminal: 'BIO-LOS-01' });
+    att.clockedIn = !att.clockedIn;
+    att.time = att.clockedIn ? 'Just Now' : 'Clocked Out';
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.ATTENDANCE, att);
+    renderAttendanceFromStorage();
+
+    // Transmit to Backend for HR Biometrics Roster
+    fetch('/api/attendance/clock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            staff_name: 'Fatima Bello',
+            department: 'Clinical Services',
+            state: 'Lagos',
+            terminal: 'BIO-LOS-01',
+            time: att.time,
+            clockedIn: att.clockedIn
+        })
+    }).catch(function(e) { console.log('Backend sync offline', e); });
+
+    if (att.clockedIn) {
+        alert('Biometric Attendance Verified: Clocked-in successfully for today (Synced to Backend & HR).');
+    } else {
+        alert('Attendance Clock-Out logged for today (Synced to Backend & HR).');
+    }
+}
+
+function handleStaffApplyLeave(e) {
+    e.preventDefault();
+    var cat = document.getElementById('staffLeaveCategory').value;
+    var start = document.getElementById('staffLeaveStartDate').value;
+    var end = document.getElementById('staffLeaveEndDate').value;
+    var reliever = document.getElementById('staffLeaveReliever').value;
+    closeModal('modalStaffApplyLeave');
+
+    var reqs = CCCRN_STORE.get(CCCRN_STORE.KEYS.LEAVE_REQUESTS, []);
+    var newId = 'LVE-2026-0' + (43 + reqs.length);
+    var newReq = {
+        id: newId,
+        category: cat,
+        start: start,
+        end: end,
+        reliever: reliever,
+        status: 'Pending HR'
+    };
+    reqs.unshift(newReq);
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.LEAVE_REQUESTS, reqs);
+    renderLeaveFromStorage();
+
+    // Transmit to Backend so HR immediately sees it in Workforce Leave Register
+    fetch('/api/leave/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            staff_name: 'Fatima Bello',
+            department: 'Clinical Services',
+            state: 'Lagos',
+            category: cat,
+            start: start,
+            end: end,
+            reliever: reliever,
+            days: 3
+        })
+    }).then(function(res) { return res.json(); }).then(function(resp) {
+        console.log('Leave dispatched to HR backend:', resp);
+    }).catch(function(e) { console.log('Backend sync offline', e); });
+
+    alert('Leave Application (' + newId + ') submitted successfully! Synced to HR Leave Register for approval.');
+}
+
+function handleStaffSubmitComplaint(e) {
+    e.preventDefault();
+    var mode = document.getElementById('staffComplaintMode').value;
+    var cat = document.getElementById('staffComplaintCategory').value;
+    var title = document.getElementById('staffComplaintTitle').value;
+    closeModal('modalStaffLogComplaint');
+
+    var list = CCCRN_STORE.get(CCCRN_STORE.KEYS.COMPLAINTS, []);
+    var newId = 'CMP-2026-0' + (50 + list.length);
+    var newComp = {
+        id: newId,
+        date: 'Today',
+        category: cat,
+        title: title,
+        mode: mode,
+        severity: 'Critical',
+        status: 'Logged · Triage',
+        linkedCap: null
+    };
+    list.unshift(newComp);
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.COMPLAINTS, list);
+    renderComplaintsFromStorage();
+
+    // Transmit to Backend so HR and DoC immediately see it in Complaints Module
+    fetch('/api/complaints/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            staff_name: 'Fatima Bello',
+            category: cat,
+            title: title,
+            mode: mode,
+            state: 'Lagos — Cluster A',
+            severity: 'High'
+        })
+    }).then(function(res) { return res.json(); }).then(function(resp) {
+        console.log('Complaint dispatched to backend:', resp);
+    }).catch(function(e) { console.log('Backend sync offline', e); });
+
+    alert('Complaint registered successfully under reference ' + newId + '! Routed to Compliance Directorate and logged in HR registry.');
+}
+
+function openModalSubmitStateEvidence(capRef) {
+    if (capRef) document.getElementById('stateEvidenceCapRef').value = capRef;
+    openModal('modalSubmitStateEvidence');
+}
+
+function handleStaffSubmitStateEvidence(e) {
+    e.preventDefault();
+    var capRef = document.getElementById('stateEvidenceCapRef').value;
+    var notes = document.getElementById('stateEvidenceNotes').value;
+    closeModal('modalSubmitStateEvidence');
+
+    var fileName = 'State_Evidence_' + capRef + '.pdf';
+    var caps = CCCRN_STORE.get(CCCRN_STORE.KEYS.CAPS, []);
+    caps.forEach(function(c) {
+        if (c.id === capRef) {
+            c.hasEvidence = true;
+            c.status = 'Evidence Submitted';
+            c.fileName = fileName;
+        }
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.CAPS, caps);
+    renderCapFromStorage();
+
+    // Transmit to Backend for DoC / HR Evidence Review Queue
+    fetch('/api/cap/submit-evidence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            capRef: capRef,
+            fileName: fileName,
+            notes: notes
+        })
+    }).then(function(res) { return res.json(); }).then(function(resp) {
+        console.log('CAP evidence dispatched to backend:', resp);
+    }).catch(function(e) { console.log('Backend sync offline', e); });
+
+    alert('State Evidence for ' + capRef + ' uploaded and synced to Compliance Directorate queue!');
+}
+
+function handleStaffSetObjective(e) {
+    e.preventDefault();
+    var stmt = document.getElementById('staffNewObjStatement').value;
+    var output = document.getElementById('staffNewObjOutput').value;
+    var weight = parseInt(document.getElementById('staffNewObjWeight').value, 10) || 15;
+    closeModal('modalStaffSetObjective');
+
+    var objs = CCCRN_STORE.get(CCCRN_STORE.KEYS.PDP_OBJECTIVES, []);
+    var newId = 'OBJ-2026-0' + (objs.length + 1);
+    objs.push({
+        id: newId,
+        statement: stmt,
+        output: output,
+        weight: weight,
+        status: 'Pending Supervisor Approval',
+        evidenceFile: null
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.PDP_OBJECTIVES, objs);
+    renderPdpFromStorage();
+
+    alert('New objective ' + newId + ' saved to LocalStorage and routed to supervisor for review.');
+}
+
+function handleStaffSubmitPdpEvidence(e) {
+    e.preventDefault();
+    var objRef = document.getElementById('staffPdpObjSelect').value;
+    closeModal('modalStaffSubmitPdpEvidence');
+
+    var objs = CCCRN_STORE.get(CCCRN_STORE.KEYS.PDP_OBJECTIVES, []);
+    objs.forEach(function(o) {
+        if (o.id.includes(objRef)) {
+            o.evidenceFile = 'Deliverable_Audit_' + objRef + '.pdf';
+            o.status = 'Evidence Submitted (In Review)';
+        }
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.PDP_OBJECTIVES, objs);
+    renderPdpFromStorage();
+
+    alert('Evidence for ' + objRef + ' uploaded and persisted in LocalStorage!');
+}
+
+function handleStaffSubmitInnovation(e) {
+    e.preventDefault();
+    var title = document.getElementById('staffInnTitle').value;
+    var desc = document.getElementById('staffInnDesc').value;
+    closeModal('modalStaffSubmitInnovation');
+
+    var inns = CCCRN_STORE.get(CCCRN_STORE.KEYS.PDP_INNOVATIONS, []);
+    var newId = 'INN-2026-00' + (inns.length + 5);
+    inns.unshift({
+        id: newId,
+        title: title,
+        desc: desc,
+        score: 'Pending HOD Evaluation',
+        status: 'Under Review',
+        author: 'Fatima Bello'
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.PDP_INNOVATIONS, inns);
+
+    alert('Innovation ' + newId + ' saved to LocalStorage and routed to HOD for 50-mark grading!');
+}
+
+function handleStaffLogTrainingAttendance(e) {
+    e.preventDefault();
+    var courseCode = document.getElementById('staffTrainingCourseSelect').value;
+    closeModal('modalAttendLogTraining');
+
+    var trainings = CCCRN_STORE.get(CCCRN_STORE.KEYS.TRAININGS, []);
+    trainings.forEach(function(t) {
+        if (t.code === courseCode) {
+            t.status = 'Certified';
+            t.date = 'Today';
+            t.score = '95%';
+        }
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.TRAININGS, trainings);
+    renderTrainingFromStorage();
+
+    alert('Training attendance logged! Course ' + courseCode + ' marked Certified in LocalStorage.');
+}
+
+function handleAcknowledgePolicy(code) {
+    var policies = CCCRN_STORE.get(CCCRN_STORE.KEYS.POLICIES, {});
+    policies[code] = { signed: true, date: 'Today (Verified)' };
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.POLICIES, policies);
+    renderPoliciesFromStorage();
+
+    alert('Digital compliance sign-off recorded for ' + code + ' in LocalStorage. Audit timestamp saved.');
+}
+
+function handleStaffAddLesson(e) {
+    e.preventDefault();
+    var title = document.getElementById('staffLessonTitle').value;
+    closeModal('modalStaffAddLesson');
+
+    var lessons = CCCRN_STORE.get(CCCRN_STORE.KEYS.LESSONS, []);
+    var newId = 'LES-0' + (lessons.length + 16);
+    lessons.unshift({
+        id: newId,
+        domain: 'Field Retrospective',
+        title: title,
+        category: 'Quality Improvement',
+        status: 'Published'
+    });
+    CCCRN_STORE.set(CCCRN_STORE.KEYS.LESSONS, lessons);
+    renderLessonsFromStorage();
+
+    alert('New lesson ' + newId + ' published and saved to LocalStorage!');
+}
+
+function handleStaffSubmitFieldUpdate(e) {
+    e.preventDefault();
+    closeModal('modalSubmitFieldUpdate');
+    alert('State Field Update transmitted and saved to LocalStorage telemetry log.');
+}
+
+function viewLinkedCapModal(ref, title, location, status) {
+    document.getElementById('linkedCapModalTitle').innerText = ref + ' — ' + title;
+    document.getElementById('linkedCapModalStatus').innerText = status;
+    document.getElementById('linkedCapModalBody').innerHTML = '<div style="line-height: 1.6;">' +
+        '<p><strong>Applicable Duty Station:</strong> ' + location + '</p>' +
+        '<p><strong>Mandatory Remediation:</strong> Root cause analysis requires physical batch testing and reconciliation of facility inventory ledgers.</p>' +
+        '<p><strong>Verification Method:</strong> State Evidence document signed by facility pharmacist and supervisor.</p>' +
+    '</div>';
+    openModal('modalViewLinkedCap');
+}
+
+function openModalReadPolicy(code, title) {
+    document.getElementById('readPolicyTitle').innerText = code + ': ' + title;
+    document.getElementById('readPolicyBody').innerHTML = '<p><strong>Official CCCRN Institutional Policy (' + code + ')</strong></p>' +
+        '<p style="color: var(--text-dim); line-height: 1.6;">This policy establishes mandatory operational protocols, zero-tolerance definitions, escalation procedures, and disciplinary mechanisms applicable to all CCCRN personnel and sub-recipients. Non-compliance constitutes immediate grounds for formal inquiry under USAID 2 CFR 200.</p>' +
+        '<div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid var(--border); margin-top: 10px;">' +
+            '<i class="fa-solid fa-file-pdf text-danger me-2"></i> Verified Official Document (PDF · 12 Pages)' +
+        '</div>';
+    openModal('modalReadPolicy');
+}
+
+function openModalGradeBehavioral(name) {
+    alert('Opening Monthly Behavioral Grading Bench for supervisee: ' + name + ' (8 Core Competencies)');
+}
+
+function askAiHelpdesk(query) {
+    document.getElementById('staffAiInput').value = query;
+    sendStaffAiQuery();
+}
+
+function sendStaffAiQuery() {
+    var input = document.getElementById('staffAiInput');
+    var query = input.value.trim();
+    if (!query) return;
+
+    var win = document.getElementById('staffAiChatWindow');
+    var userDiv = document.createElement('div');
+    userDiv.style.cssText = 'align-self: flex-end; max-width: 80%; background: var(--accent); color: #ffffff; padding: 10px 14px; border-radius: 12px 12px 2px 12px; font-size: 12px; line-height: 1.5;';
+    userDiv.innerText = query;
+    win.appendChild(userDiv);
+    input.value = '';
+
+    setTimeout(function() {
+        var aiDiv = document.createElement('div');
+        aiDiv.style.cssText = 'align-self: flex-start; max-width: 80%; background: #ffffff; border: 1px solid var(--border); padding: 10px 14px; border-radius: 12px 12px 12px 2px; font-size: 12px; line-height: 1.5; color: var(--text);';
+        
+        var reply = 'Regarding your query on <strong>"' + query + '"</strong>: Under CCCRN Compliance guidelines, all staff are protected under POL-001 with strict confidentiality. For grievances, you can submit either named or anonymously. Your submissions are saved securely.';
+        if (query.includes('PDP')) {
+            reply = 'For your PDP: You have 4 core objectives totaling 60 points. Evidence must be attached before the 15th of the month. Your supervisor grades your monthly behavioral performance (/40 marks), and your HOD grades your innovation (/50 marks).';
+        } else if (query.includes('PSEA')) {
+            reply = 'Under POL-PSEA-001: PSEA complaints go directly to the Director of Compliance and the Safeguarding Lead (Emeka Eze). Zero retaliation is guaranteed under institutional policy and USAID standards.';
+        }
+
+        aiDiv.innerHTML = '<div style="font-weight: 700; color: var(--accent); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-robot"></i> ComplianceIQ Staff Assistant</div>' + reply;
+        win.appendChild(aiDiv);
+        win.scrollTop = win.scrollHeight;
+    }, 400);
+
+    win.scrollTop = win.scrollHeight;
+}
+
+// Global Initialization
+window.initStaffModule = function() {
+    CCCRN_STORE.initDefaults();
+    renderAllFromStorage();
+
+    // Check backend sync for live updates (e.g. HR approvals)
+    fetch('/api/backend/data')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data && data.leave_requests) {
+                // If HR approved Fatima's request in backend, reflect it here
+                var fatimaReq = data.leave_requests.find(function(x) { return x.staff_name === 'Fatima Bello'; });
+                if (fatimaReq) {
+                    var localReqs = CCCRN_STORE.get(CCCRN_STORE.KEYS.LEAVE_REQUESTS, []);
+                    localReqs.forEach(function(lr) {
+                        if (lr.id === fatimaReq.id) lr.status = fatimaReq.status;
+                    });
+                    CCCRN_STORE.set(CCCRN_STORE.KEYS.LEAVE_REQUESTS, localReqs);
+                    renderLeaveFromStorage();
+                }
+            }
+        }).catch(function(e) { /* offline mode fallback */ });
+
+    if (window.ATTENDIFY_STAFF_CONTEXT) {
+        var ctx = window.ATTENDIFY_STAFF_CONTEXT;
+        if (ctx.name) document.getElementById('staffNameDisplay').innerText = ctx.name;
+        if (ctx.id) document.getElementById('staffIdDisplay').innerText = ctx.id;
+        if (ctx.role) document.getElementById('staffRoleDeptDisplay').innerText = ctx.role;
+        if (ctx.state) document.getElementById('staffDutyStationDisplay').innerText = ctx.state;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.initStaffModule) {
+        window.initStaffModule();
+    }
+});
+</script>
+
+
+    <script>
+        function openModal(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

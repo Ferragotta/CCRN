@@ -1,0 +1,382 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./compliance.db"
+}
+
+// 1. User & Authentication Model
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  roleKey      String   // 'doc', 'compliance_officer', 'hr', 'staff'
+  roleBadge    String
+  avatar       String
+  department   String?
+  state        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  complaintsLogged Complaint[]
+  pdpRecord        PDP?
+  acknowledgements PolicyAcknowledgement[]
+  travelRequests   TravelRequest[]
+}
+
+// 2. Complaints & Whistleblower Module
+model Complaint {
+  id             String   @id // e.g. CMP-048
+  date           String
+  state          String
+  category       String
+  severity       String   // 'Critical', 'High', 'Medium', 'Low'
+  source         String   // 'Whistleblower', 'Staff', 'Audit', 'Direct'
+  allegedParty   String
+  summary        String?
+  evidenceFile   String?
+  status         String   // 'Open', 'In Progress', 'Closed', 'Converted to CAP', 'Under Investigation'
+  loggedByEmail  String?
+  loggedBy       User?    @relation(fields: [loggedByEmail], references: [email])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cap            CAP?
+  investigation  InvestigationCase?
+}
+
+// 3. Corrective Action Plans (CAP)
+model CAP {
+  id             String   @id // e.g. CAP-033
+  issue          String
+  state          String
+  linkedRef      String   @unique // CMP-xxx
+  complaint      Complaint @relation(fields: [linkedRef], references: [id])
+  deadline       String
+  responsible    String
+  status         String   // 'Open', 'Pending Review', 'Closed'
+  priority       String   // 'Critical', 'High', 'Medium', 'Low'
+  rootCause      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  evidences      CAPEvidence[]
+}
+
+model CAPEvidence {
+  id          String   @id @default(cuid())
+  capId       String
+  cap         CAP      @relation(fields: [capId], references: [id], onDelete: Cascade)
+  submitter   String
+  notes       String
+  fileName    String?
+  submittedAt DateTime @default(now())
+  status      String   @default("Pending Review") // 'Pending Review', 'Accepted', 'Rejected'
+}
+
+// 4. Performance Development Plan (PDP / 150 Marks)
+model PDP {
+  id             String   @id @default(cuid())
+  userEmail      String   @unique
+  user           User     @relation(fields: [userEmail], references: [email])
+  staffName      String
+  position       String
+  department     String
+  supervisor     String
+  hod            String
+  period         String
+  status         String   // 'Draft', 'Pending Supervisor Approval', 'Approved', 'Evaluated'
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  objectives     PDPObjective[]
+  evidences      PDPEvidence[]
+  innovations    PDPInnovation[]
+  behaviourals   PDPBehavioural[]
+}
+
+model PDPObjective {
+  id          String  @id @default(cuid())
+  pdpId       String
+  pdp         PDP     @relation(fields: [pdpId], references: [id], onDelete: Cascade)
+  mainObjId   Int     // 1, 2, 3, 4 (each 15 marks = /60)
+  title       String
+  subTitle    String
+  weightMarks Float   @default(15.0)
+  supervisorScore Float?
+}
+
+model PDPEvidence {
+  id          String   @id @default(cuid())
+  pdpId       String
+  pdp         PDP      @relation(fields: [pdpId], references: [id], onDelete: Cascade)
+  mainObjId   Int
+  subObjTitle String
+  description String
+  fileName    String?
+  date        String
+  selfRating  Float?
+  verified    Boolean  @default(false)
+  score       Float?
+}
+
+model PDPInnovation {
+  id          String   @id @default(cuid())
+  pdpId       String
+  pdp         PDP      @relation(fields: [pdpId], references: [id], onDelete: Cascade)
+  title       String
+  focusArea   String
+  description String
+  impact      String
+  fileName    String?
+  period      String
+  hodScore    Float?   // Scored out of 50 by HOD
+  hodComments String?
+  verified    Boolean  @default(false)
+}
+
+model PDPBehavioural {
+  id          String   @id @default(cuid())
+  pdpId       String
+  pdp         PDP      @relation(fields: [pdpId], references: [id], onDelete: Cascade)
+  month       String
+  year        Int
+  graderName  String
+  score       Float    // Scored out of 40 by Supervisor
+}
+
+// 5. Training Management Module
+model TrainingModule {
+  id          String   @id // e.g. TRN-001
+  title       String
+  category    String
+  duration    String
+  instructor  String
+  deadline    String
+  mandatory   Boolean  @default(true)
+  totalStaff  Int      @default(490)
+  completed   Int      @default(0)
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  attendances TrainingAttendance[]
+}
+
+model TrainingAttendance {
+  id           String         @id @default(cuid())
+  moduleId     String
+  module       TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  staffName    String
+  staffEmail   String
+  state        String
+  attendedDate String
+  status       String         @default("Completed")
+  certIssued   Boolean        @default(true)
+}
+
+// 6. States & Clusters Module
+model StateProfile {
+  id          String   @id // e.g. Lagos, Kano
+  name        String
+  clusterLead String
+  facilities  Int
+  activeCaps  Int
+  riskRating  String   // 'Low', 'Medium', 'High', 'Critical'
+  compliance  Int      // %
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fieldUpdates FieldUpdate[]
+}
+
+model FieldUpdate {
+  id         String       @id @default(cuid())
+  stateId    String
+  state      StateProfile @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  cluster    String
+  author     String
+  eventType  String
+  details    String
+  attachment String?
+  date       String
+  createdAt  DateTime     @default(now())
+}
+
+// 7. Risk Register Module (ISO 31000)
+model RiskItem {
+  id          String   @id // e.g. RSK-019
+  category    String
+  description String
+  likelihood  Int      // 1-5
+  impact      Int      // 1-5
+  rating      Int      // likelihood * impact
+  level       String   // 'Critical', 'High', 'Medium', 'Low'
+  mitigation  String
+  owner       String
+  status      String   // 'Active', 'Mitigated', 'Closed'
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 8. Policy Management Module
+model Policy {
+  id           String   @id // e.g. POL-001
+  title        String
+  category     String
+  version      String
+  lastReviewed String
+  nextReview   String
+  status       String   // 'Active / Published', 'Under Review', 'Draft'
+  summary      String
+  fileName     String
+  totalStaff   Int      @default(490)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  acknowledgements PolicyAcknowledgement[]
+}
+
+model PolicyAcknowledgement {
+  id          String   @id @default(cuid())
+  policyId    String
+  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  userEmail   String
+  user        User     @relation(fields: [userEmail], references: [email])
+  userName    String
+  ackDate     DateTime @default(now())
+}
+
+// 9. Lessons Learned Module
+model LessonLearned {
+  id           String   @id // e.g. LL-012
+  category     String
+  issueRef     String?
+  whatHappened String
+  rootCause    String
+  lesson       String
+  scope        String
+  priority     String   // 'High', 'Medium', 'Low'
+  date         String
+  submittedBy  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// 10. Investigation Hub Module
+model InvestigationCase {
+  id              String    @id // e.g. INV-004
+  linkedComplaint String    @unique // CMP-xxx
+  complaint       Complaint @relation(fields: [linkedComplaint], references: [id])
+  category        String
+  stage           String    // 'Preliminary Assessment', 'Evidence Collection', 'Interviews', 'Report Drafting', 'Concluded'
+  openedDate      String
+  investigator    String
+  status          String    // 'Active', 'Pending Evidence', 'Concluded'
+  summary         String
+  allegedParty    String
+  state           String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rcaFindings       RCAFinding[]
+  controlDeviations ControlDeviation[]
+  evidenceLog       EvidenceCustody[]
+}
+
+model RCAFinding {
+  id                  String            @id @default(cuid())
+  invId               String
+  investigation       InvestigationCase @relation(fields: [invId], references: [id], onDelete: Cascade)
+  rootCause           String
+  contributingFactors String
+  systemic            Boolean           @default(true)
+  preventionAction    String
+}
+
+model ControlDeviation {
+  id            String            @id @default(cuid())
+  invId         String
+  investigation InvestigationCase @relation(fields: [invId], references: [id], onDelete: Cascade)
+  controlFailed String
+  type          String
+  frequency     String
+  severity      String            // 'Critical', 'High', 'Medium', 'Low'
+  remediation   String
+}
+
+model EvidenceCustody {
+  id           String            @id // e.g. EV-301
+  invId        String
+  investigation InvestigationCase @relation(fields: [invId], references: [id], onDelete: Cascade)
+  description  String
+  collectedBy  String
+  timestamp    String
+  custodyChain String
+  status       String            @default("Secured")
+  fileName     String?
+}
+
+// 11. Travel & Ticket Compliance Module
+model TravelRequest {
+  id            String   @id // e.g. TR-108
+  travellerName String
+  department    String
+  route         String
+  travelDate    String
+  returnDate    String
+  purpose       String
+  estimatedCost Float
+  donorCode     String
+  status        String   @default("Pending Logistics") // 'Pending Logistics', 'Ticket Issued', 'Rejected'
+  requestDate   String
+  authDocName   String?
+  userEmail     String?
+  user          User?    @relation(fields: [userEmail], references: [email])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ticket        TicketPurchase?
+}
+
+model TicketPurchase {
+  id                   String        @id // e.g. TKT-554
+  reqRef               String        @unique // TR-xxx
+  travelRequest        TravelRequest @relation(fields: [reqRef], references: [id])
+  travellerName        String
+  route                String
+  airline              String
+  vendorName           String
+  ticketNumber         String
+  amount               Float
+  purchaseDate         String
+  travelDate           String
+  returnDate           String
+  status               String        @default("Issued / Open") // 'Issued / Open', 'Utilised', 'Cancelled'
+  boardingPassUploaded Boolean       @default(false)
+  boardingPassFile     String?
+  paymentStatus        String        @default("Unpaid") // 'Unpaid', 'Approved for Payment', 'Paid'
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  vendorPayment        VendorPayment?
+}
+
+model VendorPayment {
+  id                   String         @id // e.g. PAY-091
+  vendorName           String
+  invoiceRef           String
+  ticketId             String         @unique
+  ticketPurchase       TicketPurchase @relation(fields: [ticketId], references: [id])
+  tickets              String
+  amount               Float
+  dueDate              String
+  daysOverdue          Int            @default(0)
+  boardingPassVerified Boolean        @default(false)
+  status               String         @default("Pending Boarding Pass") // 'Pending Boarding Pass', 'Ready for Payment', 'Paid'
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+}
