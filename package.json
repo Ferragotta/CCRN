@@ -10,7 +10,7 @@
     "server": "tsx server/src/index.ts",
     "db:push": "prisma db push --schema=server/prisma/schema.prisma",
     "db:seed": "tsx server/prisma/seed.ts",
-    "start": "node server.js"
+    "start": "node server.cjs"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
