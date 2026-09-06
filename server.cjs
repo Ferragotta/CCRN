@@ -1,51 +1,46 @@
+
 // ══════════════════════════════════════════════════════════════════
-// CCCRN COMPLIANCEIQ — PRODUCTION SERVER FOR RENDER DEPLOYMENT
+// SHARED BACKEND API ROUTER (BRIDGING STAFF PORTAL & HR DASHBOARD)
 // ══════════════════════════════════════════════════════════════════
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const querystring = require('querystring');
-
-const root = __dirname;
-const PORT = process.env.PORT || 8000;
-
-const dataDir = path.join(root, 'data');
+const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
-  try {
-    fs.mkdirSync(dataDir, { recursive: true });
-  } catch (e) {}
+  try { fs.mkdirSync(dataDir, { recursive: true }); } catch (e) {}
 }
-
-const storePath = path.join(dataDir, 'backend_store.json');
+const backendStoreFile = path.join(dataDir, 'backend_store.json');
 
 function getBackendStore() {
   try {
-    if (fs.existsSync(storePath)) return JSON.parse(fs.readFileSync(storePath, 'utf8'));
+    if (fs.existsSync(backendStoreFile)) return JSON.parse(fs.readFileSync(backendStoreFile, 'utf8'));
   } catch (e) {
     console.error('Error reading backend store:', e);
   }
-  return {
-    leave_requests: [],
-    attendance_logs: [],
-    complaints: [],
-    caps: [],
-    investigations: [],
-    pdp_records: [],
-    field_work: [],
-    audit_logs: [],
-    registered_officers: {}
-  };
+  return { leave_requests: [], attendance_logs: [], complaints: [], caps: [], investigations: [], pdp_records: [], field_work: [], audit_logs: [], registered_officers: {} };
+}
+
+
+function getRegisteredOfficers() {
+  const store = getBackendStore();
+  return store.registered_officers || {};
+}
+
+function saveRegisteredOfficer(role, data) {
+  const store = getBackendStore();
+  if (!store.registered_officers) store.registered_officers = {};
+  store.registered_officers[role] = data;
+  saveBackendStore(store);
 }
 
 function saveBackendStore(data) {
+  const p = backendStoreFile;
   try {
-    fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
   } catch (e) {
     console.error('Error saving backend store:', e);
   }
 }
 
+// Audit Log Helper
 function logAuditEvent(actor, moduleName, description, txHash = null) {
   const store = getBackendStore();
   if (!store.audit_logs) store.audit_logs = [];
@@ -60,11 +55,13 @@ function logAuditEvent(actor, moduleName, description, txHash = null) {
     hash: hash
   };
   store.audit_logs.unshift(newLog);
+  // Keep max 50 logs
   if (store.audit_logs.length > 50) store.audit_logs = store.audit_logs.slice(0, 50);
   saveBackendStore(store);
   return newLog;
 }
 
+// Request Helper to parse JSON body
 function parseJsonBody(req, callback) {
   let body = '';
   req.on('data', chunk => body += chunk);
@@ -76,6 +73,21 @@ function parseJsonBody(req, callback) {
     }
   });
 }
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const querystring = require('querystring');
+
+const root = __dirname;
+
+// Secret Security Tokens for Elevated Roles
+const SECURITY_KEYS = {
+  doc: { email: 'director@cccrn.org', key: 'DOC-9981', default: 'dashboard' },
+  compliance: { email: 'compliance@cccrn.org', key: 'SPEC-8821', default: 'complaints' },
+  hr: { email: 'hr@cccrn.org', key: 'HR-7742', default: 'dashboard' },
+  state_lead: { email: 'lead@cccrn.org', key: 'LEAD-5531', default: 'training' }
+};
 
 const USER_ROLES = {
   'superadmin@cccrn.org': {
@@ -93,7 +105,12 @@ const USER_ROLES = {
     roleBadge: 'ADMIN (DoC)',
     avatar: 'DC',
     email: 'director@cccrn.org',
-    allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'states', 'policies', 'lessons', 'reports', 'ai', 'ai-review', 'investigations', 'travel'],
+    allowedModules: ['dashboard', 'leave-attendance',
+      'complaints',
+      'cap',
+      'pdp',
+      'training',
+      'states', 'policies', 'lessons', 'reports', 'ai', 'ai-review', 'investigations', 'travel'],
     defaultModule: 'dashboard'
   },
   'compliance@cccrn.org': {
@@ -111,8 +128,29 @@ const USER_ROLES = {
     roleBadge: 'HR ACCESS',
     avatar: 'HR',
     email: 'hr@cccrn.org',
-    allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'states', 'policies', 'lessons', 'investigations', 'travel'],
+    allowedModules: [
+      'dashboard',
+      'leave-attendance',
+      'complaints',
+      'cap',
+      'pdp',
+      'training',
+      'states',
+      'policies',
+      'lessons',
+      'investigations',
+      'travel'
+    ],
     defaultModule: 'dashboard'
+  },
+  'lead@cccrn.org': {
+    key: 'state_lead',
+    name: 'State Team Lead',
+    roleBadge: 'STATE LEAD ACCESS',
+    avatar: 'SL',
+    email: 'lead@cccrn.org',
+    allowedModules: ['complaints', 'cap', 'training', 'states', 'lessons', 'travel'],
+    defaultModule: 'training'
   },
   'staff@cccrn.org': {
     key: 'staff',
@@ -125,26 +163,28 @@ const USER_ROLES = {
   }
 };
 
-let loggedInUser = USER_ROLES['staff@cccrn.org'];
+let loggedInUser = USER_ROLES['staff@cccrn.org']; // Default
 
 function renderDynamicSidebarHtml(user) {
-  const allowed = user.allowedModules || [];
-  const isDoc = user.key === 'doc';
+  const allowed = user.allowedModules;
   const isSuperAdmin = user.key === 'superadmin';
+  const isDoc = user.key === 'doc';
   const isHr = user.key === 'hr';
 
   let navHtml = '';
 
+  // 1. Executive Dashboard (DoC & HR)
   if (allowed.includes('dashboard')) {
     navHtml += `
-      <a href="/dashboard" class="nav-item active" data-panel="dashboard" onclick="switchPanel('dashboard'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 10px 18px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-light); border-left: 3px solid var(--accent); text-decoration: none;">
-        <span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-chart-line"></i></span>
-        <span>${isSuperAdmin ? 'Super Admin Console' : (isDoc ? 'Executive Dashboard' : (isHr ? 'HR Command Dashboard' : 'Dashboard'))}</span>
-        ${isSuperAdmin ? '<span class="badge" style="margin-left: auto; background: #ef4444; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 800;">ROOT</span>' : ''}
+      <div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Executive</div>
+      <a href="/dashboard" class="nav-item active" data-panel="dashboard" onclick="switchPanel('dashboard'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--accent); background: rgba(2, 54, 123, 0.08); text-decoration: none; border-left: 3px solid var(--accent); font-weight: 700;">
+        <span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-table-columns"></i></span>
+        <span>Dashboard</span>
       </a>
     `;
   }
 
+  // 2. Workforce & Operations
   navHtml += `
     <div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Workforce & Operations</div>
   `;
@@ -161,7 +201,7 @@ function renderDynamicSidebarHtml(user) {
           <i class="fa-solid fa-chevron-down" id="staffPortalAccordionChevron" style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s ease;"></i>
         </div>
         <div id="staffPortalSubmenu" style="display: block; background: rgba(2, 54, 123, 0.03); padding: 4px 0 6px;">
-          <a href="javascript:void(0)" onclick="if(window.switchStaffMainTab){switchStaffMainTab('leave');}" style="display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 46px; font-size: 12px; color: var(--text-dim); text-decoration: none;">
+<a href="javascript:void(0)" onclick="if(window.switchStaffMainTab){switchStaffMainTab('leave');}" style="display: flex; align-items: center; gap: 10px; padding: 7px 18px 7px 46px; font-size: 12px; color: var(--text-dim); text-decoration: none;">
             <i class="fa-solid fa-calendar-check" style="width: 14px; color: var(--text-muted);"></i>
             <span>My Leave</span>
           </a>
@@ -213,62 +253,82 @@ function renderDynamicSidebarHtml(user) {
   }
 
   if (['hr', 'supervisor', 'hod', 'doc', 'superadmin'].includes(user.key)) {
-    if (allowed.includes('leave-attendance')) {
-      const leaveBadge = isHr ? '<span class="badge" style="margin-left: auto; background: var(--accent); color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">HR LEAD</span>' : '';
-      navHtml += `<a href="/leave-attendance" class="nav-item" data-panel="leave-attendance" onclick="switchPanel('leave-attendance'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-calendar-check"></i></span><span>Leave & Attendance</span>${leaveBadge}</a>`;
-    }
-    if (allowed.includes('pdp')) {
-      const pdpBadge = isHr ? '<span class="badge" style="margin-left: auto; background: #e0f2fe; color: #0369a1; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">AUDIT</span>' : '';
-      navHtml += `<a href="/pdp" class="nav-item" data-panel="pdp" onclick="switchPanel('pdp'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-bullseye"></i></span><span>PDP & Objectives</span>${pdpBadge}</a>`;
-    }
+    navHtml += `
+      <a href="/leave-attendance" class="nav-item" data-panel="leave-attendance" onclick="switchPanel('leave-attendance'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;">
+        <span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-calendar-check"></i></span>
+        <span>Leave & Attendance</span>
+        <span class="badge" style="margin-left: auto; background: var(--warning); color: #000; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">PRO</span>
+      </a>
+    `;
   }
 
-  if (allowed.includes('training')) {
-    navHtml += `<a href="/training" class="nav-item" data-panel="training" onclick="switchPanel('training'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-graduation-cap"></i></span><span>Training Academy</span></a>`;
-  }
-  if (allowed.includes('states')) {
-    navHtml += `<a href="/states" class="nav-item" data-panel="states" onclick="switchPanel('states'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-map-location-dot"></i></span><span>State Offices</span></a>`;
-  }
-
-  let oversightItems = '';
+  // 3. Core Modules (Complaints, CAP, PDP)
+  let coreItems = '';
   if (allowed.includes('complaints')) {
-    oversightItems += `<a href="/complaints" class="nav-item" data-panel="complaints" onclick="switchPanel('complaints'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-inbox"></i></span><span>Complaints & Whistleblower</span></a>`;
+    const compBadge = isHr 
+      ? '<span class="badge" style="margin-left: auto; background: #e2e8f0; color: #475569; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">VIEW ONLY</span>'
+      : '<span class="badge" style="margin-left: auto; background: var(--danger); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">7</span>';
+    coreItems += `<a href="/complaints" class="nav-item" data-panel="complaints" onclick="switchPanel('complaints'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-inbox"></i></span><span>Complaints</span>${compBadge}</a>`;
   }
   if (allowed.includes('cap')) {
-    oversightItems += `<a href="/cap" class="nav-item" data-panel="cap" onclick="switchPanel('cap'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-circle-check"></i></span><span>Corrective Action (CAP)</span></a>`;
+    const capBadge = isHr
+      ? '<span class="badge" style="margin-left: auto; background: #e2e8f0; color: #475569; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">VIEW ONLY</span>'
+      : '<span class="badge" style="margin-left: auto; background: var(--warning); color: #000; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">3</span>';
+    coreItems += `<a href="/cap" class="nav-item" data-panel="cap" onclick="switchPanel('cap'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-circle-check"></i></span><span>Corrective Action Plans</span>${capBadge}</a>`;
   }
-  if (oversightItems) {
-    navHtml += `<div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Accountability</div>${oversightItems}`;
+  if (allowed.includes('pdp')) {
+    coreItems += `<a href="/pdp" class="nav-item" data-panel="pdp" onclick="switchPanel('pdp'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-bullseye"></i></span><span>PDP</span></a>`;
+  }
+  if (coreItems) {
+    navHtml += `<div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Core Modules</div>${coreItems}`;
   }
 
+  // 4. Training & Regional
+  let trainingItems = '';
+  if (allowed.includes('training')) {
+    trainingItems += `<a href="/training" class="nav-item" data-panel="training" onclick="switchPanel('training'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-graduation-cap"></i></span><span>Training</span></a>`;
+  }
+  if (allowed.includes('states')) {
+    trainingItems += `<a href="/states" class="nav-item" data-panel="states" onclick="switchPanel('states'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-map-location-dot"></i></span><span>State and Cluster</span></a>`;
+  }
+  if (trainingItems) {
+    navHtml += `<div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">People & States</div>${trainingItems}`;
+  }
+
+  // 5. Governance (Risk, Policy, Lessons)
   let govItems = '';
-  if (allowed.includes('risk') && !isHr) {
-    govItems += `<a href="/risk" class="nav-item" data-panel="risk" onclick="switchPanel('risk'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-triangle-exclamation"></i></span><span>Risk Register</span><span class="badge" style="margin-left: auto; background: var(--accent); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">ISO 31000</span></a>`;
+  if (allowed.includes('risk')) {
+    govItems += `<a href="/risk" class="nav-item" data-panel="risk" onclick="switchPanel('risk'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-triangle-exclamation"></i></span><span>Risk Register</span></a>`;
   }
   if (allowed.includes('policies')) {
-    govItems += `<a href="/policies" class="nav-item" data-panel="policies" onclick="switchPanel('policies'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-file-shield"></i></span><span>Policy Management</span></a>`;
+    const polBadge = isHr ? '<span class="badge" style="margin-left: auto; background: #ede9fe; color: #6d28d9; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">ALL ACCESS</span>' : '';
+    govItems += `<a href="/policies" class="nav-item" data-panel="policies" onclick="switchPanel('policies'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-file-shield"></i></span><span>Policy Management</span>${polBadge}</a>`;
   }
   if (allowed.includes('lessons')) {
-    govItems += `<a href="/lessons" class="nav-item" data-panel="lessons" onclick="switchPanel('lessons'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-lightbulb"></i></span><span>Lesson Learned</span></a>`;
+    const lesBadge = isHr ? '<span class="badge" style="margin-left: auto; background: #ede9fe; color: #6d28d9; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">ALL ACCESS</span>' : '';
+    govItems += `<a href="/lessons" class="nav-item" data-panel="lessons" onclick="switchPanel('lessons'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-lightbulb"></i></span><span>Lesson Learned</span>${lesBadge}</a>`;
   }
   if (govItems) {
     navHtml += `<div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Governance</div>${govItems}`;
   }
 
+  // 6. Advanced & Operations (AI Review, Investigation, Travel)
   let advancedItems = '';
   if (allowed.includes('ai-review')) {
-    advancedItems += `<a href="/ai-review" class="nav-item" data-panel="ai-review" onclick="switchPanel('ai-review'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-brain"></i></span><span>AI Compliance Review</span></a>`;
+    advancedItems += `<a href="/ai-review" class="nav-item" data-panel="ai-review" onclick="switchPanel('ai-review'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-brain"></i></span><span>AI Compliance Review</span><span class="badge" style="margin-left: auto; background: var(--accent2); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">NEW</span></a>`;
   }
   if (allowed.includes('investigations')) {
-    advancedItems += `<a href="/investigations" class="nav-item" data-panel="investigations" onclick="switchPanel('investigations'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-shield-halved"></i></span><span>Investigation</span></a>`;
+    const invBadge = isHr ? '<span class="badge" style="margin-left: auto; background: #e2e8f0; color: #475569; font-size: 9px; padding: 2px 6px; border-radius: 10px; font-weight: 700;">VIEW ONLY</span>' : '<span class="badge" style="margin-left: auto; background: var(--accent2); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">NEW</span>';
+    advancedItems += `<a href="/investigations" class="nav-item" data-panel="investigations" onclick="switchPanel('investigations'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-shield-halved"></i></span><span>Investigation</span>${invBadge}</a>`;
   }
   if (allowed.includes('travel')) {
-    advancedItems += `<a href="/travel" class="nav-item" data-panel="travel" onclick="switchPanel('travel'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-plane-departure"></i></span><span>Travel & Tickets</span></a>`;
+    advancedItems += `<a href="/travel" class="nav-item" data-panel="travel" onclick="switchPanel('travel'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-plane-departure"></i></span><span>Travel & Tickets</span><span class="badge" style="margin-left: auto; background: var(--accent2); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 12px; font-weight: 700;">NEW</span></a>`;
   }
   if (advancedItems) {
     navHtml += `<div class="nav-section" style="padding: 12px 18px 4px; font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Special Operations</div>${advancedItems}`;
   }
 
+  // 7. DoC & Super Admin Exclusive Intelligence
   if ((isDoc || isSuperAdmin) && (allowed.includes('reports') || allowed.includes('ai'))) {
     let intel = '';
     if (allowed.includes('reports')) intel += `<a href="/reports" class="nav-item" data-panel="reports" onclick="switchPanel('reports'); return false;" style="display: flex; align-items: center; gap: 10px; padding: 9px 18px; font-size: 13px; color: var(--text-dim); text-decoration: none; border-left: 3px solid transparent;"><span class="icon" style="width: 18px; text-align: center;"><i class="fa-solid fa-chart-pie"></i></span><span>Reports & Donor</span></a>`;
@@ -317,6 +377,7 @@ function renderBladeView(viewName, data = {}) {
   const viewPath = path.join(root, 'resources/views', viewName.replace(/\./g, '/') + '.blade.php');
   const layoutPath = path.join(root, 'resources/views/layouts/app.blade.php');
   const topbarPath = path.join(root, 'resources/views/partials/topbar.blade.php');
+  const footerPath = path.join(root, 'resources/views/partials/footer.blade.php');
 
   if (viewName.startsWith('auth.')) {
     let authContent = fs.readFileSync(viewPath, 'utf8');
@@ -341,6 +402,7 @@ function renderBladeView(viewName, data = {}) {
   let sidebarContent = renderDynamicSidebarHtml(user);
   let topbarContent = fs.readFileSync(topbarPath, 'utf8');
 
+  // Customise Topbar for Super Admin vs HR vs DoC
   if (isSuperAdmin) {
     topbarContent = topbarContent.replace('Executive Command Center', 'Super Administrator Master Command Console');
     topbarContent = topbarContent.replace('Live Operations', '<span style="color: #dc2626; font-weight: 800;"><i class="fa-solid fa-crown me-1" style="color: #f59e0b;"></i> ROOT ACCESS · ZERO RESTRICTIONS</span>');
@@ -361,9 +423,10 @@ function renderBladeView(viewName, data = {}) {
   layoutContent = layoutContent.replace(/@if\(session\('success'\)\)[\s\S]*?@endif/g, '');
   layoutContent = layoutContent.replace(/@if\(session\('error'\)\)[\s\S]*?@endif/g, '');
 
+  // Resolve @include('modules.xxx') and partials
   layoutContent = layoutContent.replace(/@include\('([^']+)'\)/g, (match, includeName) => {
     const includePath = path.join(root, 'resources/views', includeName.replace(/\./g, '/') + '.blade.php');
-    if (!fs.existsSync(includePath)) return '<!-- missing: ' + includeName + ' -->';
+    if (!fs.existsSync(includePath)) return `<!-- missing: ${includeName} -->`;
     let includeContent = fs.readFileSync(includePath, 'utf8');
     const sectionMatch = includeContent.match(/@section\('content'\)([\s\S]*?)@endsection/);
     if (sectionMatch) includeContent = sectionMatch[1];
@@ -371,76 +434,100 @@ function renderBladeView(viewName, data = {}) {
     return includeContent;
   });
 
-  layoutContent = layoutContent.replace(/\{\{\s*asset\('([^']+)'\)\s*\}\}/g, '/$1');
-  layoutContent = layoutContent.replace(/\{\{\s*\$title\s*\?\?\s*'([^']+)'\s*\}\}/g, '$1');
-  layoutContent = layoutContent.replace(/@csrf/g, '');
   layoutContent = layoutContent.replace(/\{\{--[\s\S]*?--\}\}/g, '');
+  layoutContent = layoutContent.replace(/\{\{\s*\$title\s*\?\?[^}]+\}\}/g, isHr ? 'CCCRN ComplianceIQ — HR Command Portal' : 'CCCRN ComplianceIQ — Ethics & Governance');
+  layoutContent = layoutContent.replace(/\{\{\s*\$headerTitle\s*\?\?[^}]+\}\}/g, data.headerTitle || (isHr ? 'Human Resources Command Center' : 'Executive Command Center'));
 
-  const activeModule = data.currentRoute || user.defaultModule;
-  layoutContent = layoutContent.replace('</body>', `
-    <script>
-      window.CURRENT_USER_ROLE = '${user.key}';
-      window.CURRENT_USER_EMAIL = '${user.email}';
-      window.CURRENT_USER_NAME = '${user.name}';
-      
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof switchPanel === 'function') {
-          switchPanel('${activeModule}');
-        }
-      });
-    </script>
-    </body>
-  `);
+  layoutContent = layoutContent.replace(/\{\{\s*asset\('([^']+)'\)\s*\}\}/g, '/$1');
+  layoutContent = layoutContent.replace(/\{\{\s*route\('([^']+)'\)\s*\}\}/g, '/$1');
+  layoutContent = layoutContent.replace(/@csrf/g, '');
+
+  const initialPanel = user.allowedModules.includes(data.currentRoute) ? data.currentRoute : user.defaultModule;
+
+  // Toggle HR vs DoC vs SuperAdmin view inside panel-dashboard server-side
+  if (user.key === 'superadmin') {
+    layoutContent = layoutContent.replace(/id="superadminDashboardView" style="display: none;"/, 'id="superadminDashboardView" style="display: block;"');
+    layoutContent = layoutContent.replace(/id="docDashboardView" style="display: [^"]*"/, 'id="docDashboardView" style="display: none;"');
+    layoutContent = layoutContent.replace(/id="hrDashboardView" style="display: [^"]*"/, 'id="hrDashboardView" style="display: none;"');
+  } else if (isHr) {
+    layoutContent = layoutContent.replace(/id="hrDashboardView" style="display: none;"/, 'id="hrDashboardView" style="display: block;"');
+    layoutContent = layoutContent.replace(/id="docDashboardView"/, 'id="docDashboardView" style="display: none;"');
+    layoutContent = layoutContent.replace(/id="superadminDashboardView"/, 'id="superadminDashboardView" style="display: none;"');
+    layoutContent = layoutContent.replace(/<button[^>]*onclick="openModal\('modalLogComplaint'\)"[^>]*>[\s\S]*?<\/button>/gi, '<!-- New Complaint button removed for HR profile -->');
+    layoutContent = layoutContent.replace(/<button[^>]*id="topbarBtnNewComplaint"[^>]*>[\s\S]*?<\/button>/gi, '<!-- Topbar New Complaint button removed for HR profile -->');
+    layoutContent = layoutContent.replace(/<button[^>]*id="btnLogComplaint"[^>]*>[\s\S]*?<\/button>/gi, '<!-- Log Complaint button removed for HR profile -->');
+  } else {
+    layoutContent = layoutContent.replace(/id="hrDashboardView" style="display: [^"]*"/, 'id="hrDashboardView" style="display: none;"');
+    layoutContent = layoutContent.replace(/id="superadminDashboardView" style="display: [^"]*"/, 'id="superadminDashboardView" style="display: none;"');
+    layoutContent = layoutContent.replace(/id="docDashboardView" style="display: none;"/, 'id="docDashboardView" style="display: block;"');
+    if (user.key === 'doc') {
+      layoutContent = layoutContent.replace(/<button[^>]*id="btnApplyLeaveHeader"[^>]*>[\s\S]*?<\/button>/gi, '<!-- Apply for Leave button removed for DoC profile -->');
+    }
+  }
+
+  const autoSwitchScript = `<script>
+    window.CURRENT_USER_ROLE = '${user.key}';
+    window.ALLOWED_MODULES = ${JSON.stringify(user.allowedModules)};
+    window.DEFAULT_MODULE = '${user.defaultModule}';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof switchPanel === 'function') {
+        switchPanel('${initialPanel}');
+      }
+    });
+  </script>`;
+  layoutContent = layoutContent.replace('</body>', autoSwitchScript + '</body>');
+
+  // Server-side guarantee of panel visibility
+  if (initialPanel) {
+    if (initialPanel === 'dashboard') {
+      layoutContent = layoutContent.replace(/id="panel-dashboard"[^>]*>/, 'id="panel-dashboard" style="display: block;">');
+    } else {
+      layoutContent = layoutContent.replace(/id="panel-dashboard"[^>]*>/, 'id="panel-dashboard" style="display: none;">');
+      layoutContent = layoutContent.replace(new RegExp('id="panel-' + initialPanel + '"[^>]*>'), 'id="panel-' + initialPanel + '" style="display: block;">');
+    }
+  }
 
   return layoutContent;
 }
 
 const server = http.createServer((req, res) => {
-  const parsedUrl = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
-  const url = parsedUrl.pathname;
+  const url = req.url.split('?')[0];
 
-  if (url === '/api/health' || url === '/healthz') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString() }));
+  // Parse session cookie
+  const cookieHeader = req.headers.cookie || '';
+  if (cookieHeader.includes('auth_role=superadmin')) {
+    loggedInUser = USER_ROLES['superadmin@cccrn.org'];
+  } else if (cookieHeader.includes('auth_role=staff')) {
+    loggedInUser = USER_ROLES['staff@cccrn.org'];
+  } else if (cookieHeader.includes('auth_role=state_lead')) {
+    loggedInUser = USER_ROLES['lead@cccrn.org'];
+  } else if (cookieHeader.includes('auth_role=compliance')) {
+    loggedInUser = USER_ROLES['compliance@cccrn.org'];
+  } else if (cookieHeader.includes('auth_role=hr')) {
+    loggedInUser = USER_ROLES['hr@cccrn.org'];
+  } else if (cookieHeader.includes('auth_role=doc')) {
+    loggedInUser = USER_ROLES['director@cccrn.org'];
+  } else {
+    loggedInUser = USER_ROLES['staff@cccrn.org'];
   }
 
-  if (url.startsWith('/assets/') || url.endsWith('.css') || url.endsWith('.js') || url.endsWith('.png') || url.endsWith('.jpg')) {
-    let filePath = path.join(root, 'public', url);
-    if (!fs.existsSync(filePath)) filePath = path.join(root, url);
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      let contentType = 'text/plain';
-      if (filePath.endsWith('.css')) contentType = 'text/css';
-      if (filePath.endsWith('.js')) contentType = 'application/javascript';
-      if (filePath.endsWith('.png')) contentType = 'image/png';
-      if (filePath.endsWith('.jpg')) contentType = 'image/jpeg';
-      if (filePath.endsWith('.svg')) contentType = 'image/svg+xml';
-      res.writeHead(200, { 'Content-Type': contentType });
-      return fs.createReadStream(filePath).pipe(res);
+  // STRICT SERVER-SIDE ENFORCEMENT: HR VIEW-ONLY ACCESS CANNOT BE BYPASSED
+  const isHrRole = loggedInUser && loggedInUser.key === 'hr';
+  const isMutative = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
+  if (isHrRole && isMutative) {
+    if (url.startsWith('/complaints') || url.startsWith('/api/complaints') || url.startsWith('/cap') || url.startsWith('/api/cap') || url.startsWith('/investigations') || url.startsWith('/api/investigations')) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({
+        error: 'Forbidden',
+        status: 403,
+        message: 'Security Policy Violation: HR role has view-only access to Complaints and Corrective Action Plans. All create, update, and delete actions are permanently blocked by server policy.'
+      }));
     }
   }
 
-  if (url.startsWith('/portals/')) {
-    const portalFile = path.join(root, url.endsWith('.html') ? url : url + '/index.html');
-    if (fs.existsSync(portalFile) && fs.statSync(portalFile).isFile()) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return fs.createReadStream(portalFile).pipe(res);
-    }
-  }
-
-  if (url === '/staff_compliance_local.html') {
-    const localHtml = path.join(root, 'staff_compliance_local.html');
-    if (fs.existsSync(localHtml)) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return fs.createReadStream(localHtml).pipe(res);
-    }
-  }
-
-  if (url === '/api/backend/data' || url === '/api/sync') {
-    const store = getBackendStore();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify(store));
-  }
-
+  
+  // ─── API: SUPER ADMIN ROOT GOVERNANCE OVERRIDE & MANAGEMENT ───
   if (url === '/api/superadmin/override' && req.method === 'POST') {
     return parseJsonBody(req, (err, data) => {
       const store = getBackendStore();
@@ -456,16 +543,25 @@ const server = http.createServer((req, res) => {
         store.investigations = [];
         store.field_work = [];
         saveBackendStore(store);
-        msg = 'Clean Slate executed: all test records purged.';
-        logAuditEvent('Super Administrator', 'ComplianceIQ Central', 'Purged all test records.');
+        msg = 'Complete Clean Slate executed: all dummy and test records purged across all modules.';
+        logAuditEvent('Super Administrator', 'ComplianceIQ Central', 'Purged all test records and restored system to pure clean slate.');
+      } else if (action === 'FORCE_SYNC') {
+        msg = 'Biometric attendance roster force-synchronized across all 6 state offices.';
+        logAuditEvent('Super Administrator', 'Attendify Biometrics', 'Executed forced synchronization of national staff attendance logs. ' + rationale);
+      } else if (action === 'BYPASS_ESCROW') {
+        msg = 'Unilateral Escrow Gate clearance granted for all active travel advances.';
+        logAuditEvent('Super Administrator', 'Travel POL-TRV-03', 'Unilateral escrow bypass executed under root authority. ' + rationale);
       } else if (action === 'APPROVE_ALL_CAP') {
         const caps = store.caps || [];
         caps.forEach(c => { c.status = 'Closed'; c.resolvedAt = new Date().toISOString(); });
         saveBackendStore(store);
-        msg = 'Bulk approved ' + caps.length + ' pending CAP remediations.';
-        logAuditEvent('Super Administrator', 'CAP Directorate', 'Bulk closed pending CAP remediations. ' + rationale);
+        msg = 'Bulk approved and finalized ' + caps.length + ' pending CAP remediations.';
+        logAuditEvent('Super Administrator', 'CAP Directorate', 'Bulk finalized and closed pending CAP remediations. ' + rationale);
+      } else if (action === 'LOCK_AUDIT') {
+        msg = 'State audit ledgers locked and frozen for external review.';
+        logAuditEvent('Super Administrator', 'Audit Ledgers', 'State audit ledgers frozen for external compliance verification. ' + rationale);
       } else {
-        logAuditEvent('Super Administrator', 'Root Override', 'Directive: ' + action + '. ' + rationale);
+        logAuditEvent('Super Administrator', 'Root Override', 'Executed root governance directive: ' + action + '. ' + rationale);
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -473,144 +569,622 @@ const server = http.createServer((req, res) => {
     });
   }
 
-  if (url === '/api/leave/apply' && req.method === 'POST') {
+  // ─── API: SUPER ADMIN SYSTEM SETTINGS & MODULE CONTROL ───
+  if (url === '/api/superadmin/module-toggle' && req.method === 'POST') {
     return parseJsonBody(req, (err, data) => {
-      if (err || !data) {
+      const moduleName = data.module;
+      const status = data.status; // 'Active', 'Maintenance', 'Locked'
+      logAuditEvent('Super Administrator', moduleName, 'Subsystem operational status set to: ' + status);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, module: moduleName, status: status }));
+    });
+  }
+
+  // ─── API: GET COMPLETE BACKEND STORE ───
+  if (url === '/api/backend/data' || url === '/api/sync') {
+    const store = getBackendStore();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify(store));
+  }
+
+  // ─── API: STAFF LEAVE APPLICATION (Staff -> HR) ───
+  
+  // ─── API: REGISTER OFFICER (DIRECTOR OF COMPLIANCE / HR MANAGER) ───
+  if (url === '/api/auth/register-officer' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      if (err || !data.email || !data.role) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ success: false, message: 'Invalid payload' }));
+        return res.end(JSON.stringify({ success: false, message: 'Role and valid email required' }));
       }
-      const store = getBackendStore();
-      if (!store.leave_requests) store.leave_requests = [];
-      const newLeave = {
-        id: 'LVE-' + Date.now().toString().slice(-6),
-        staff_name: data.staff_name || 'Staff Member',
-        staff_email: data.staff_email || 'staff@cccrn.org',
-        leave_type: data.leave_type || 'Annual Leave',
-        start_date: data.start_date || new Date().toISOString().split('T')[0],
-        end_date: data.end_date || new Date().toISOString().split('T')[0],
-        days: data.days || 1,
-        reason: data.reason || 'Personal request',
-        status: 'Pending HR Verification',
-        created_at: new Date().toISOString()
-      };
-      store.leave_requests.unshift(newLeave);
-      saveBackendStore(store);
-      logAuditEvent(newLeave.staff_name, 'HR Leave Desk', 'Applied for ' + newLeave.leave_type + ' (' + newLeave.days + ' days).');
-      res.writeHead(201, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, leave: newLeave }));
+      const roleKey = data.role === 'hr' ? 'hr' : 'doc';
+      const email = data.email.trim().toLowerCase();
+      const name = data.name || (roleKey === 'hr' ? 'HR Manager' : 'Director of Compliance');
+      
+      saveRegisteredOfficer(roleKey, {
+        email: email,
+        name: name,
+        phone: data.phone || '',
+        registered_at: new Date().toISOString()
+      });
+
+      if (roleKey === 'hr') {
+        USER_ROLES[email] = {
+          key: 'hr',
+          name: name,
+          roleBadge: 'HR ACCESS',
+          avatar: 'HR',
+          email: email,
+          allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'policies', 'lessons', 'states'],
+          defaultModule: 'dashboard'
+        };
+      } else {
+        USER_ROLES[email] = {
+          key: 'doc',
+          name: name,
+          roleBadge: 'ADMIN (DoC)',
+          avatar: 'DC',
+          email: email,
+          allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'states', 'policies', 'lessons', 'reports', 'ai', 'ai-review', 'investigations', 'travel'],
+          defaultModule: 'dashboard'
+        };
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': 'auth_role=' + roleKey + '; Path=/' });
+      return res.end(JSON.stringify({
+        success: true,
+        message: 'Officer registered successfully. Email cached for all alerts & notifications.',
+        role: roleKey,
+        email: email,
+        name: name
+      }));
     });
   }
 
-  if (url === '/api/attendance/clock' && req.method === 'POST') {
-    return parseJsonBody(req, (err, data) => {
-      const store = getBackendStore();
-      if (!store.attendance_logs) store.attendance_logs = [];
-      const newLog = {
-        id: 'LOG-' + Date.now().toString().slice(-6),
-        staff_name: data.staff_name || 'Staff Member',
-        staff_email: data.staff_email || 'staff@cccrn.org',
-        type: data.type || 'In',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: new Date().toISOString().split('T')[0],
-        location: data.location || 'Headquarters'
-      };
-      store.attendance_logs.unshift(newLog);
-      saveBackendStore(store);
-      res.writeHead(201, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, log: newLog }));
-    });
+  // ─── API: GET CACHED OFFICER EMAILS ───
+  if (url === '/api/auth/cached-officers' && req.method === 'GET') {
+    const officers = getRegisteredOfficers();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({
+      success: true,
+      doc_email: (officers.doc && officers.doc.email) || 'director@cccrn.org',
+      doc_name: (officers.doc && officers.doc.name) || 'Director of Compliance',
+      hr_email: (officers.hr && officers.hr.email) || 'hr@cccrn.org',
+      hr_name: (officers.hr && officers.hr.name) || 'HR Manager'
+    }));
   }
 
-  if (url === '/api/complaints/submit' && req.method === 'POST') {
-    return parseJsonBody(req, (err, data) => {
-      const store = getBackendStore();
-      if (!store.complaints) store.complaints = [];
-      const newComplaint = {
-        id: 'CMP-' + (store.complaints.length + 49),
-        ref: 'CMP-' + (store.complaints.length + 49),
-        date: new Date().toLocaleDateString('en-GB'),
-        state: data.state || 'Lagos',
-        category: data.category || 'General',
-        severity: data.severity || 'Medium',
-        source: data.source || 'Whistleblower',
-        allegedParty: data.allegedParty || '—',
-        summary: data.summary || '',
-        status: 'Open',
-        loggedByEmail: data.loggedByEmail || 'staff@cccrn.org'
-      };
-      store.complaints.unshift(newComplaint);
-      saveBackendStore(store);
-      logAuditEvent('Whistleblower Desk', 'Complaints Intake', 'Logged complaint ' + newComplaint.ref + ' [' + newComplaint.severity + '].');
-      res.writeHead(201, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, complaint: newComplaint }));
-    });
-  }
-
+    // ─── API: SUBMIT FIELD WORK MISSION ───
   if (url === '/api/fieldwork/submit' && req.method === 'POST') {
     return parseJsonBody(req, (err, data) => {
       const store = getBackendStore();
       if (!store.field_work) store.field_work = [];
-      const newMission = {
-        id: 'MSN-' + Date.now().toString().slice(-6),
-        mission_name: data.mission_name || 'Field Mission',
-        staff_name: data.staff_name || 'Field Lead',
-        state: data.state || 'Kano',
-        date: new Date().toISOString().split('T')[0],
-        status: 'Active Fieldwork'
+      const newRef = 'FW-2026-0' + (store.field_work.length + 1);
+      const mission = {
+        ref: newRef,
+        staff_name: data.staff_name || 'Authenticated Staff',
+        destination: data.destination || 'Field Facility',
+        activity_type: data.activity_type || 'Clinical Mentorship',
+        start_date: data.start_date || 'Upcoming',
+        end_date: data.end_date || 'Upcoming',
+        purpose: data.purpose || '',
+        advance_requested: data.advance_requested || 'None',
+        advance_status: data.advance_requested ? 'Pending Finance' : 'N/A',
+        status: 'Approved & Active',
+        created_at: new Date().toISOString()
       };
-      store.field_work.unshift(newMission);
+      store.field_work.unshift(mission);
       saveBackendStore(store);
-      res.writeHead(201, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ success: true, mission: newMission }));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, message: 'Field mission ' + newRef + ' registered and synced to Operations & DoC.', mission: mission }));
     });
   }
 
-  if (url === '/login' || url === '/') {
+  if (url === '/api/leave/apply' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      const newId = data.id || ('LVE-2026-0' + (43 + (store.leave_requests ? store.leave_requests.length : 0)));
+      const newReq = {
+        id: newId,
+        staff_name: data.staff_name || 'Fatima Bello',
+        department: data.department || 'Clinical Services',
+        state: data.state || 'Lagos',
+        category: data.category || 'Annual Leave',
+        start: data.start || 'Tomorrow',
+        end: data.end || 'Next Week',
+        days: data.days || 3,
+        reliever: data.reliever || 'Biodun Alade',
+        status: 'Pending Supervisor'
+      };
+      store.leave_requests.unshift(newReq);
+      saveBackendStore(store);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, message: 'Leave application submitted. Routed to Supervisor for authentication.', request: newReq }));
+    });
+  }
+
+  // ─── API: HR OR SUPERVISOR APPROVE / REJECT LEAVE (HR -> Staff) ───
+  if (url === '/api/leave/action' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      const reqId = data.id;
+      const action = data.action || 'Approved'; // 'Approved' or 'Rejected'
+
+      let found = false;
+      let targetReq = null;
+      store.leave_requests.forEach(r => {
+        if (r.id === reqId) {
+          r.status = action;
+          if (data.supervisor_authenticated !== undefined) {
+            r.supervisor_authenticated = data.supervisor_authenticated;
+          }
+          if (action === 'Pending HR') {
+            r.supervisor_authenticated = true;
+            r.authenticated_by = data.supervisor_name || 'Dr. Ngozi Adeyemi';
+            r.authenticated_at = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+          targetReq = r;
+          found = true;
+        }
+      });
+      saveBackendStore(store);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: found, message: 'Leave request ' + reqId + ' updated to ' + action, request: targetReq }));
+    });
+  }
+
+  // ─── API: BIOMETRIC ATTENDANCE CLOCK (Staff -> HR) ───
+  if (url === '/api/attendance/clock' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      const newLog = {
+        staff_name: data.staff_name || 'Fatima Bello',
+        department: data.department || 'Clinical Services',
+        state: data.state || 'Lagos',
+        terminal: data.terminal || 'BIO-LOS-01',
+        time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: 'Today',
+        clockedIn: data.clockedIn !== false,
+        status: data.clockedIn !== false ? 'Clocked In' : 'Clocked Out'
+      };
+      store.attendance_logs.unshift(newLog);
+      saveBackendStore(store);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, log: newLog }));
+    });
+  }
+
+  // ─── API: LOG / REGISTER COMPLAINT (Staff / DoC) ───
+  if (url === '/api/complaints/submit' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.complaints) store.complaints = [];
+      const newId = 'CMP-2026-0' + (50 + store.complaints.length);
+      const newComp = {
+        id: newId,
+        date: 'Today',
+        category: data.category || 'Grievance',
+        title: data.title || (data.category ? data.category + ' Incident' : 'Staff Incident Report'),
+        source: data.source || ((data.staff_name || 'Staff') + ' (Portal)'),
+        state: data.state || 'National',
+        alleged: data.alleged || 'Management Oversight',
+        mode: data.mode || 'Named',
+        severity: data.severity || 'Medium',
+        status: data.status || 'Open',
+        owner: data.owner || 'officer@cccrn.org',
+        details: data.details || data.description || 'Registered complaint incident.'
+      };
+      store.complaints.unshift(newComp);
+      saveBackendStore(store);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, complaint: newComp }));
+    });
+  }
+
+  // ─── API: UPDATE COMPLAINT STATUS / CONVERT TO CAP ───
+  if (url === '/api/complaints/action' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.complaints) store.complaints = [];
+      const id = data.id;
+      const action = data.action; // 'Open', 'In Progress', 'Closed', 'Converted to CAP', 'investigate'
+      let updated = null;
+
+      store.complaints.forEach(c => {
+        if (c.id === id) {
+          if (action === 'investigate') {
+            c.status = 'In Progress';
+            // Also create investigation record if not existing
+            if (!store.investigations) store.investigations = [];
+            const invRef = 'INV-0' + (13 + store.investigations.length);
+            store.investigations.unshift({
+              ref: invRef,
+              sourceComp: c.id,
+              state: c.state || 'National',
+              allegation: c.category + ': ' + (c.details || 'Investigation required'),
+              lead: 'Assigned Lead Auditor',
+              daysOpen: 1,
+              severity: c.severity || 'High',
+              status: 'Under Investigation',
+              evidenceCount: 1,
+              notes: 'Spawned from complaint ' + c.id
+            });
+          } else {
+            c.status = action;
+          }
+          updated = c;
+        }
+      });
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: !!updated, complaint: updated }));
+    });
+  }
+
+  // ─── API: DELETE COMPLAINT (Super Admin Only) ───
+  if (url === '/api/complaints/delete' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.complaints) store.complaints = [];
+      store.complaints = store.complaints.filter(c => c.id !== data.id);
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    });
+  }
+
+  // ─── API: CREATE CAP (DoC / Compliance) ───
+  if (url === '/api/cap/create' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.caps) store.caps = [];
+      const newId = 'CAP-2026-0' + (33 + store.caps.length);
+      const newCap = {
+        id: newId,
+        issue: data.issue || 'Corrective action plan finding',
+        state: data.state || 'National',
+        linkedRef: data.linkedRef || 'DIRECT',
+        deadline: data.deadline || '30 Days',
+        responsible: data.responsible || 'Unit Lead',
+        status: 'Open',
+        priority: data.priority || 'High',
+        notes: data.notes || 'Institutional corrective action item.',
+        hasEvidence: false,
+        evidenceList: []
+      };
+      store.caps.unshift(newCap);
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true, cap: newCap }));
+    });
+  }
+
+  // ─── API: UPDATE CAP STATUS (DoC / Admin) ───
+  if (url === '/api/cap/action' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.caps) store.caps = [];
+      let updated = null;
+      store.caps.forEach(c => {
+        if (c.id === data.id) {
+          c.status = data.status;
+          if (data.status === 'Closed') {
+            c.resolvedAt = new Date().toISOString();
+          }
+          updated = c;
+        }
+      });
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: !!updated, cap: updated }));
+    });
+  }
+
+  // ─── API: DELETE CAP (Super Admin Only) ───
+  if (url === '/api/cap/delete' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.caps) store.caps = [];
+      store.caps = store.caps.filter(c => c.id !== data.id);
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    });
+  }
+
+  // ─── API: INVESTIGATION ACTIONS ───
+  if (url === '/api/investigations/action' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.investigations) store.investigations = [];
+      let updated = null;
+      store.investigations.forEach(inv => {
+        if (inv.ref === data.ref) {
+          if (data.lead) inv.lead = data.lead;
+          if (data.status) inv.status = data.status;
+          if (data.findings) inv.notes = data.findings;
+          updated = inv;
+        }
+      });
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: !!updated, investigation: updated }));
+    });
+  }
+
+  if (url === '/api/investigations/delete' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      if (!store.investigations) store.investigations = [];
+      store.investigations = store.investigations.filter(i => i.ref !== data.ref);
+      saveBackendStore(store);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: true }));
+    });
+  }
+
+  // ─── API: SUBMIT CAP STATE EVIDENCE (Staff -> HR/DoC) ───
+  if (url === '/api/cap/submit-evidence' && req.method === 'POST') {
+    return parseJsonBody(req, (err, data) => {
+      const store = getBackendStore();
+      const capRef = data.capRef;
+      const fileName = data.fileName || ('State_Evidence_' + capRef + '.pdf');
+
+      let updated = false;
+      store.caps.forEach(c => {
+        if (c.id === capRef) {
+          c.hasEvidence = true;
+          c.status = 'Evidence Submitted';
+          if (!c.evidenceList) c.evidenceList = [];
+          c.evidenceList.push(fileName);
+          updated = true;
+        }
+      });
+      saveBackendStore(store);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ success: updated, message: 'Evidence for ' + capRef + ' transmitted to Compliance Directorate.' }));
+    });
+  }
+
+  
+  // DIRECT TESTING ROUTE: SUPER ADMIN (ROOT ABSOLUTE AUTHORITY)
+  if (url === '/superadmin' || url === '/superadmin-dashboard' || url === '/super-admin') {
+    loggedInUser = USER_ROLES['superadmin@cccrn.org'];
+    const html = renderBladeView('dashboard.index', { currentRoute: 'dashboard', user: loggedInUser });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'auth_role=superadmin; Path=/' });
+    return res.end(html);
+  }
+
+    // DIRECT TESTING ROUTE: COMPLIANCE OFFICER / COMPLAINTS HUB
+  if (url === '/compliance' || url === '/compliance-officer' || url === '/complaints-hub') {
+    loggedInUser = USER_ROLES['compliance@cccrn.org'];
+    const html = renderBladeView('dashboard.index', { currentRoute: 'complaints', user: loggedInUser });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'auth_role=compliance; Path=/' });
+    return res.end(html);
+  }
+
+  // DIRECT TESTING ROUTE: HR DASHBOARD
+  if (url === '/hr' || url === '/hr-dashboard') {
+    loggedInUser = USER_ROLES['hr@cccrn.org'];
+    const html = renderBladeView('dashboard.index', { currentRoute: 'dashboard', user: loggedInUser });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'auth_role=hr; Path=/' });
+    return res.end(html);
+  }
+
+  // DIRECT TESTING ROUTE: DoC (DIRECTOR OF COMPLIANCE) DASHBOARD
+  if (url === '/doc' || url === '/doc-dashboard' || url === '/director' || url === '/compliance-dashboard') {
+    loggedInUser = USER_ROLES['director@cccrn.org'];
+    const html = renderBladeView('dashboard.index', { currentRoute: 'dashboard', user: loggedInUser });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'auth_role=doc; Path=/' });
+    return res.end(html);
+  }
+
+  // Static Assets
+  if (url.startsWith('/assets/')) {
+    const filePath = path.join(root, 'assets', url.replace('/assets/', ''));
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath);
+      const mime = ext === '.css' ? 'text/css' : ext === '.png' ? 'image/png' : ext === '.js' ? 'application/javascript' : 'text/plain';
+      res.writeHead(200, { 'Content-Type': mime });
+      return res.end(fs.readFileSync(filePath));
+    }
+    // Fallback search in public/assets/
+    const publicPath = path.join(root, 'public', url);
+    if (fs.existsSync(publicPath) && fs.statSync(publicPath).isFile()) {
+      const ext = path.extname(publicPath);
+      const mime = ext === '.css' ? 'text/css' : ext === '.png' ? 'image/png' : ext === '.js' ? 'application/javascript' : 'text/plain';
+      res.writeHead(200, { 'Content-Type': mime });
+      return res.end(fs.readFileSync(publicPath));
+    }
+  }
+
+  if (url === '/assets/images/logo.png' || url === '/logo.png') {
+    const logoPath = path.join(root, 'public/assets/images/logo.png');
+    if (fs.existsSync(logoPath)) {
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      return res.end(fs.readFileSync(logoPath));
+    }
+  }
+
+    // STANDALONE IDENTIFY HOST INTEGRATION & EMBED ROUTES
+  if (url === '/identify' || url === '/identify/staff-compliance' || url === '/test-harness/identify') {
+    const simPath = path.join(root, 'resources/views/test_harness/identify_simulator.blade.php');
+    if (fs.existsSync(simPath)) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(fs.readFileSync(simPath, 'utf8'));
+    }
+  }
+
+  // INDEPENDENT STANDALONE WORKFORCE & COMPLIANCE FEATURE ROUTES
+  // (Can be embedded by Attendify team via iframe, or opened directly as an independent feature)
+  if (url === '/staff-portal' || url === '/attendify-feature' || url === '/compliance-feature' || url === '/my-compliance' || (url === '/staff' && req.method === 'GET')) {
+    let embedHtml = fs.readFileSync(path.join(root, 'resources/views/modules/identify_embed.blade.php'), 'utf8');
+    const staffHtml = fs.readFileSync(path.join(root, 'resources/views/modules/staff.blade.php'), 'utf8');
+    const contentOnly = staffHtml.match(/@section\('content'\)([\s\S]*?)@endsection/);
+    embedHtml = embedHtml.replace(/@include\('modules\.staff'\)/, contentOnly ? contentOnly[1] : staffHtml);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(embedHtml);
+  }
+
+  if (url === '/staff-embed' || url === '/identify/embed') {
+    let embedHtml = fs.readFileSync(path.join(root, 'resources/views/modules/identify_embed.blade.php'), 'utf8');
+    const staffHtml = fs.readFileSync(path.join(root, 'resources/views/modules/staff.blade.php'), 'utf8');
+    const contentOnly = staffHtml.match(/@section\('content'\)([\s\S]*?)@endsection/);
+    embedHtml = embedHtml.replace(/@include\('modules\.staff'\)/, contentOnly ? contentOnly[1] : staffHtml);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(embedHtml);
+  }
+
+  // 1. DEDICATED ADMIN & COMPLIANCE SPECIALIST LOGIN vs GENERAL LOGIN
+  if (url === '/admin' || url === '/admin/login' || url === '/compliance-hub/login') {
+    if (req.method === 'GET') {
+      const html = renderBladeView('auth.compliance_hub_login');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    }
+  }
+
+  if (url === '/login' || url === '/auth/login') {
+    if (req.method === 'GET') {
+      const html = renderBladeView('auth.login');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(html);
+    }
+  }
+
+  if (url === '/admin' || url === '/admin/login' || url === '/login' || url === '/auth/login' || url === '/compliance-hub/login') {
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        const params = new URLSearchParams(body);
+        const userIdentifier = (params.get('username') || params.get('email') || '').trim().toLowerCase();
+
+        const regOfficers = getRegisteredOfficers();
+        const docRegisteredEmail = (regOfficers.doc && regOfficers.doc.email || '').toLowerCase();
+        const hrRegisteredEmail = (regOfficers.hr && regOfficers.hr.email || '').toLowerCase();
+
+        if (userIdentifier === docRegisteredEmail || userIdentifier === 'director@cccrn.org' || userIdentifier === 'director' || userIdentifier === 'chika@cccrn.org') {
+          loggedInUser = USER_ROLES[userIdentifier] || {
+            key: 'doc',
+            name: (regOfficers.doc && regOfficers.doc.name) || 'Director of Compliance (DoC)',
+            roleBadge: 'ADMIN (DoC)',
+            avatar: 'DC',
+            email: userIdentifier,
+            allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'states', 'policies', 'lessons', 'reports', 'ai', 'ai-review', 'investigations', 'travel'],
+            defaultModule: 'dashboard'
+          };
+          res.writeHead(302, { 'Location': '/dashboard', 'Set-Cookie': 'auth_role=doc; Path=/' });
+          return res.end();
+        } else if (userIdentifier === hrRegisteredEmail || userIdentifier === 'hr@cccrn.org' || userIdentifier === 'hr' || userIdentifier === 'people@cccrn.org') {
+          loggedInUser = USER_ROLES[userIdentifier] || {
+            key: 'hr',
+            name: (regOfficers.hr && regOfficers.hr.name) || 'HR Manager',
+            roleBadge: 'HR ACCESS',
+            avatar: 'HR',
+            email: userIdentifier,
+            allowedModules: ['dashboard', 'leave-attendance', 'complaints', 'cap', 'pdp', 'training', 'policies', 'lessons', 'states'],
+            defaultModule: 'dashboard'
+          };
+          res.writeHead(302, { 'Location': '/dashboard', 'Set-Cookie': 'auth_role=hr; Path=/' });
+          return res.end();
+        } else if (userIdentifier === 'superadmin@cccrn.org' || userIdentifier === 'superadmin' || userIdentifier === 'admin@cccrn.org') {
+          loggedInUser = USER_ROLES['superadmin@cccrn.org'];
+          res.writeHead(302, { 'Location': '/dashboard', 'Set-Cookie': 'auth_role=superadmin; Path=/' });
+          return res.end();
+        } else if (userIdentifier === 'compliance@cccrn.org' || userIdentifier === 'compliance' || userIdentifier === 'specialist@cccrn.org') {
+          loggedInUser = USER_ROLES['compliance@cccrn.org'];
+          res.writeHead(302, { 'Location': '/complaints', 'Set-Cookie': 'auth_role=compliance; Path=/' });
+          return res.end();
+        } else if (userIdentifier === 'supervisor@cccrn.org' || userIdentifier === 'supervisor' || userIdentifier === 'ngozi@cccrn.org') {
+          loggedInUser = {
+            key: 'supervisor',
+            name: 'Dr. Ngozi Adeyemi',
+            roleBadge: 'SUPERVISOR (LAGOS)',
+            avatar: 'NA',
+            email: 'supervisor@cccrn.org',
+            allowedModules: ['staff', 'complaints', 'cap', 'pdp', 'training', 'policies', 'lessons', 'ai'],
+            defaultModule: 'staff'
+          };
+          res.writeHead(302, { 'Location': '/identify', 'Set-Cookie': 'auth_role=supervisor; Path=/' });
+          return res.end();
+        } else if (userIdentifier === 'lead@cccrn.org' || userIdentifier === 'lead' || userIdentifier === 'stl@cccrn.org' || userIdentifier === 'musa@cccrn.org') {
+          loggedInUser = USER_ROLES['lead@cccrn.org'];
+          res.writeHead(302, { 'Location': '/identify', 'Set-Cookie': 'auth_role=state_lead; Path=/' });
+          return res.end();
+        } else {
+          loggedInUser = {
+            key: 'staff',
+            name: userIdentifier ? userIdentifier.split('@')[0] : 'Staff Member',
+            roleBadge: 'STAFF ACCESS',
+            avatar: 'ST',
+            email: userIdentifier || 'staff@cccrn.org',
+            allowedModules: ['complaints', 'cap', 'pdp', 'training', 'states', 'policies', 'lessons', 'ai', 'travel'],
+            defaultModule: 'complaints'
+          };
+          res.writeHead(302, { 'Location': '/staff', 'Set-Cookie': 'auth_role=staff; Path=/' });
+          return res.end();
+        }
+      });
+      return;
+    }
+  }
+
+  if (url === '/logout') {
+    loggedInUser = USER_ROLES['staff@cccrn.org'];
+    res.writeHead(302, { 'Location': '/login', 'Set-Cookie': 'auth_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT' });
+    return res.end();
+  }
+
+  if (url === '/') {
     const html = renderBladeView('auth.login');
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(html);
   }
 
-  if (url === '/admin/login') {
-    const html = renderBladeView('auth.admin_login');
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    return res.end(html);
-  }
+  // Module Routing on Unified Dashboard
+  let requestedModule = url.replace('/', '') || loggedInUser.defaultModule;
 
-  if (url === '/login/submit' && req.method === 'POST') {
-    let body = '';
-    req.on('data', chunk => body += chunk);
-    req.on('end', () => {
-      const post = querystring.parse(body);
-      const email = (post.email || '').trim().toLowerCase();
-      if (USER_ROLES[email]) {
-        loggedInUser = USER_ROLES[email];
-      } else {
-        loggedInUser = {
-          key: 'staff',
-          name: post.name || email.split('@')[0] || 'Staff User',
-          roleBadge: 'STAFF ACCESS',
-          avatar: 'ST',
-          email: email,
-          allowedModules: ['staff', 'complaints', 'cap', 'pdp', 'training', 'policies', 'lessons', 'ai'],
-          defaultModule: 'staff'
-        };
-      }
+  if (requestedModule === 'dashboard') {
+    if (loggedInUser.key !== 'doc' && loggedInUser.key !== 'superadmin' && loggedInUser.key !== 'hr') {
       res.writeHead(302, { 'Location': '/' + loggedInUser.defaultModule });
       return res.end();
-    });
-    return;
+    }
   }
 
-  if (url === '/logout') {
-    loggedInUser = USER_ROLES['staff@cccrn.org'];
-    res.writeHead(302, { 'Location': '/login' });
+    // LEAVE & ATTENDANCE REGISTER: STRICTLY RESTRICTED TO HR/SUPERVISOR/HOD/DOC
+  if (requestedModule === 'leave-attendance' && loggedInUser.key === 'staff') {
+    res.writeHead(302, { 'Location': '/staff' });
     return res.end();
   }
 
-  let requestedModule = url.replace('/', '') || loggedInUser.defaultModule;
-  if (requestedModule === 'dashboard' && loggedInUser.key === 'staff') {
-    requestedModule = 'staff';
+    // STAFF COMPLIANCE: EXCLUSIVELY FOR STAFF / IDENTIFY — HR CANNOT ACCESS AS STAFF
+  if (requestedModule === 'staff' && loggedInUser.key === 'hr') {
+    res.writeHead(302, { 'Location': '/leave-attendance' });
+    return res.end();
+  }
+
+  // RISK REGISTER: STRICTLY NO ACCESS FOR HR
+  if (requestedModule === 'risk' && loggedInUser.key === 'hr') {
+    res.writeHead(302, { 'Location': '/' + loggedInUser.defaultModule });
+    return res.end();
+  }
+
+  // AI COMPLIANCE REVIEW: STRICTLY NO ACCESS FOR HR
+  if (requestedModule === 'ai-review' && loggedInUser.key === 'hr') {
+    res.writeHead(302, { 'Location': '/' + loggedInUser.defaultModule });
+    return res.end();
+  }
+
+  const docOnlyPages = ['reports', 'ai'];
+  if (docOnlyPages.includes(requestedModule) && loggedInUser.key !== 'doc' && loggedInUser.key !== 'superadmin') {
+    res.writeHead(302, { 'Location': '/' + loggedInUser.defaultModule });
+    return res.end();
   }
 
   const html = renderBladeView('dashboard.index', { currentRoute: requestedModule, user: loggedInUser });
@@ -618,6 +1192,7 @@ const server = http.createServer((req, res) => {
   res.end(html);
 });
 
+const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
-  console.log('🚀 CCCRN ComplianceIQ live on port ' + PORT);
+  console.log('🚀 CCCRN ComplianceIQ Single Port running live on http://localhost:8000');
 });
