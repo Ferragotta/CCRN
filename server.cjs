@@ -1,3 +1,10 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const querystring = require('querystring');
+
+const root = __dirname;
+
 
 // ══════════════════════════════════════════════════════════════════
 // SHARED BACKEND API ROUTER (BRIDGING STAFF PORTAL & HR DASHBOARD)
@@ -74,12 +81,7 @@ function parseJsonBody(req, callback) {
   });
 }
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const querystring = require('querystring');
 
-const root = __dirname;
 
 // Secret Security Tokens for Elevated Roles
 const SECURITY_KEYS = {
